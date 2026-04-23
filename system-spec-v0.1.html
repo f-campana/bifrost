@@ -1,0 +1,1288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hybrid Agent System — Full Specification</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+
+:root {
+  --bg:#0b0b0b; --surface:#111; --surface-2:#161616;
+  --border:#1e1e1e; --border-mid:#282828; --border-bright:#353535;
+  --text:#d0d0d0; --text-muted:#4e4e4e; --text-dim:#222;
+  --accent:#c8ff3e; --blue:#5ab4ff; --orange:#ff9555;
+  --purple:#c084fc; --teal:#2dd4bf; --red:#f87171; --green:#4ade80;
+  --amber:#fbbf24;
+  --t-action:#c8ff3e; --t-workflow:#5ab4ff;
+  --t-project:#ff9555; --t-strategy:#c084fc;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+
+body {
+  background:var(--bg);
+  color:var(--text);
+  font-family:'IBM Plex Sans',sans-serif;
+  font-size:13px;
+  line-height:1.7;
+  padding:0;
+}
+
+/* ── Layout ── */
+.wrapper {
+  display:grid;
+  grid-template-columns:220px 1fr;
+  min-height:100vh;
+}
+
+/* Sidebar nav */
+nav {
+  position:sticky;
+  top:0;
+  height:100vh;
+  overflow-y:auto;
+  background:var(--surface);
+  border-right:1px solid var(--border-mid);
+  padding:36px 0 48px;
+  display:flex;
+  flex-direction:column;
+  gap:0;
+}
+.nav-title {
+  font-family:'IBM Plex Mono',monospace;
+  font-size:8px;font-weight:600;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--text-muted);
+  padding:0 20px 16px;
+  border-bottom:1px solid var(--border);
+  margin-bottom:8px;
+}
+.nav-section {
+  padding:2px 0;
+}
+.nav-section-label {
+  font-family:'IBM Plex Mono',monospace;
+  font-size:8px;font-weight:600;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--text-dim);
+  padding:10px 20px 4px;
+  display:block;
+}
+nav a {
+  display:block;
+  padding:4px 20px;
+  font-size:11px;color:var(--text-muted);
+  text-decoration:none;
+  border-left:2px solid transparent;
+  transition:all .15s;
+}
+nav a:hover {color:var(--text);border-left-color:var(--border-bright);}
+
+/* Main content */
+main {
+  padding:52px 60px 100px 60px;
+  max-width:860px;
+}
+
+/* ── Typography ── */
+.doc-header {
+  margin-bottom:52px;
+  padding-bottom:28px;
+  border-bottom:1px solid var(--border-mid);
+}
+.doc-title {
+  font-family:'IBM Plex Mono',monospace;
+  font-size:18px;font-weight:600;
+  letter-spacing:.04em;color:var(--text);
+  margin-bottom:10px;
+}
+.doc-meta {
+  display:flex;gap:16px;flex-wrap:wrap;
+}
+.doc-meta-item {
+  font-family:'IBM Plex Mono',monospace;
+  font-size:9px;color:var(--text-muted);
+}
+.doc-meta-item span {color:#666;}
+
+/* Section anchors */
+.spec-section {
+  margin-bottom:52px;
+  padding-top:8px;
+}
+.spec-h2 {
+  font-family:'IBM Plex Mono',monospace;
+  font-size:13px;font-weight:600;
+  letter-spacing:.06em;color:var(--text);
+  margin-bottom:20px;
+  padding-bottom:10px;
+  border-bottom:1px solid var(--border-mid);
+  display:flex;align-items:center;gap:12px;
+}
+.spec-num {
+  font-size:9px;color:var(--text-dim);
+  letter-spacing:.1em;min-width:24px;
+}
+.spec-h3 {
+  font-family:'IBM Plex Mono',monospace;
+  font-size:11px;font-weight:600;
+  color:#888;letter-spacing:.04em;
+  margin:22px 0 10px;
+}
+p { margin-bottom:12px; color:#aaa; }
+p:last-child { margin-bottom:0; }
+
+/* ── Inline components ── */
+code {
+  font-family:'IBM Plex Mono',monospace;
+  font-size:10px;color:#888;
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  padding:1px 5px;border-radius:2px;
+}
+.code-block {
+  font-family:'IBM Plex Mono',monospace;
+  font-size:9px;color:#555;
+  background:var(--surface);
+  border:1px solid var(--border-mid);
+  border-radius:3px;
+  padding:12px 14px;
+  line-height:1.8;
+  margin:10px 0;
+  overflow-x:auto;
+  white-space:pre;
+}
+
+/* Tags / badges */
+.tag {
+  display:inline-block;
+  font-family:'IBM Plex Mono',monospace;
+  font-size:8px;font-weight:600;
+  padding:2px 6px;border-radius:2px;
+  letter-spacing:.06em;
+}
+.t-built  {color:var(--green); background:rgba(74,222,128,.08); border:1px solid rgba(74,222,128,.22);}
+.t-designed{color:var(--blue); background:rgba(90,180,255,.07); border:1px solid rgba(90,180,255,.2);}
+.t-partial{color:var(--amber); background:rgba(251,191,36,.07); border:1px solid rgba(251,191,36,.2);}
+
+/* ── Tier blocks ── */
+.tier-block {
+  border:1px solid var(--border-mid);border-radius:3px;
+  overflow:hidden;margin:10px 0;
+}
+.tier-head {
+  padding:9px 14px;border-bottom:1px solid var(--border);
+  display:flex;align-items:baseline;gap:10px;
+  background:var(--surface);
+}
+.tier-name {font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;}
+.tier-prop {font-size:9px;color:var(--text-muted);}
+.tier-body {padding:10px 14px;background:var(--bg);}
+.tier-body p {font-size:10px;color:#666;margin-bottom:6px;}
+
+.ta .tier-name{color:var(--t-action);}
+.tw .tier-name{color:var(--t-workflow);}
+.tp .tier-name{color:var(--t-project);}
+.ts .tier-name{color:var(--t-strategy);}
+
+/* ── Role table ── */
+.role-table {
+  width:100%;border-collapse:collapse;
+  border:1px solid var(--border-mid);border-radius:3px;
+  overflow:hidden;margin:10px 0;font-size:9px;
+}
+.role-table th {
+  font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:600;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);
+  background:var(--surface);padding:8px 12px;text-align:left;
+  border-bottom:1px solid var(--border-mid);
+}
+.role-table td {
+  padding:7px 12px;border-bottom:1px solid var(--border);
+  vertical-align:top;
+}
+.role-table tr:last-child td{border-bottom:none;}
+.role-table tr:nth-child(even) td{background:var(--surface);}
+.role-id{font-family:'IBM Plex Mono',monospace;font-size:9px;color:#777;}
+.role-desc{color:#666;line-height:1.5;}
+.role-in{font-family:'IBM Plex Mono',monospace;font-size:8px;color:#555;}
+.role-out{font-family:'IBM Plex Mono',monospace;font-size:8px;color:#555;}
+.v-role .role-id{color:var(--red);}
+
+/* ── Definition rows ── */
+.def-grid {display:flex;flex-direction:column;gap:1px;background:var(--border-mid);border:1px solid var(--border-mid);border-radius:3px;overflow:hidden;margin:10px 0;}
+.def-row {display:grid;grid-template-columns:160px 1fr;background:var(--bg);}
+.def-row.alt{background:var(--surface);}
+.def-key {
+  font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;
+  color:var(--text-muted);padding:8px 13px;
+  border-right:1px solid var(--border-mid);
+  display:flex;align-items:flex-start;
+}
+.def-val {
+  padding:8px 13px;font-size:9px;color:#777;line-height:1.6;
+}
+.def-val code{font-size:8px;}
+
+/* ── Phase table ── */
+.phase-table {display:flex;flex-direction:column;gap:10px;margin:10px 0;}
+.phase-row {
+  border:1px solid var(--border-mid);border-radius:3px;overflow:hidden;
+}
+.phase-head {
+  display:flex;align-items:center;gap:10px;
+  padding:9px 13px;background:var(--surface);
+  border-bottom:1px solid var(--border);
+}
+.phase-num {
+  font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:600;
+  color:var(--text-dim);min-width:28px;
+}
+.phase-title {font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;color:var(--text);}
+.phase-status-group {margin-left:auto;display:flex;gap:6px;}
+.phase-body {padding:10px 13px;background:var(--bg);display:flex;flex-direction:column;gap:6px;}
+.phase-desc {font-size:9px;color:#666;line-height:1.6;}
+.phase-builds {display:flex;flex-wrap:wrap;gap:4px;margin-top:3px;}
+.pb-item {font-family:'IBM Plex Mono',monospace;font-size:8px;color:#555;padding:1px 6px;border-radius:2px;background:var(--surface);border:1px solid var(--border-mid);}
+.phase-dogfood {font-size:9px;color:var(--accent);opacity:.6;font-style:italic;margin-top:4px;}
+
+/* ── Node cards ── */
+.node-grid {display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:10px 0;}
+.node-card {border:1px solid var(--border-mid);border-radius:3px;overflow:hidden;}
+.nc-mbp{border-color:rgba(255,149,85,.3);}
+.nc-mini{border-color:rgba(45,212,191,.28);}
+.nc-tach{border-color:rgba(192,132,252,.28);}
+.nc-head{padding:10px 13px;border-bottom:1px solid var(--border);}
+.nc-mbp .nc-head{background:rgba(255,149,85,.04);}
+.nc-mini .nc-head{background:rgba(45,212,191,.04);}
+.nc-tach .nc-head{background:rgba(192,132,252,.04);}
+.nc-name{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;margin-bottom:2px;}
+.nc-mbp .nc-name{color:var(--orange);}
+.nc-mini .nc-name{color:var(--teal);}
+.nc-tach .nc-name{color:var(--purple);}
+.nc-spec{font-size:8px;color:var(--text-muted);line-height:1.5;}
+.nc-body{padding:10px 13px;display:flex;flex-direction:column;gap:6px;}
+.nc-section-label{font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);}
+.nc-items{display:flex;flex-wrap:wrap;gap:3px;margin-top:2px;}
+.nc-item{font-family:'IBM Plex Mono',monospace;font-size:8px;color:#666;padding:1px 5px;border-radius:2px;background:var(--surface-2);border:1px solid var(--border);}
+
+/* ── Gate flow ── */
+.gate-flow {
+  display:flex;flex-direction:column;gap:0;
+  border:1px solid var(--border-mid);border-radius:3px;overflow:hidden;margin:10px 0;
+}
+.gf-step {
+  display:grid;grid-template-columns:120px 1fr;
+  border-bottom:1px solid var(--border);
+}
+.gf-step:last-child{border-bottom:none;}
+.gf-actor{
+  padding:10px 13px;background:var(--surface);
+  border-right:1px solid var(--border-mid);
+  font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;
+  display:flex;align-items:flex-start;
+}
+.gf-agent{color:var(--teal);}
+.gf-gate{color:var(--accent);}
+.gf-you{color:var(--orange);}
+.gf-ci{color:var(--blue);}
+.gf-body{padding:10px 13px;font-size:9px;color:#666;line-height:1.6;}
+.gf-note{font-family:'IBM Plex Mono',monospace;font-size:8px;color:#444;margin-top:4px;}
+
+/* ── Contract blocks ── */
+.contract {
+  background:var(--surface);border:1px solid var(--border-mid);
+  border-radius:3px;padding:14px 16px;margin:10px 0;
+  display:flex;flex-direction:column;gap:8px;
+}
+.contract-title {
+  font-family:'IBM Plex Mono',monospace;
+  font-size:9px;font-weight:600;color:var(--text-muted);
+  letter-spacing:.12em;text-transform:uppercase;
+}
+.contract-body{font-size:10px;color:#777;line-height:1.7;}
+
+/* ── Rule list ── */
+.rule-list{display:flex;flex-direction:column;gap:4px;margin:8px 0;}
+.rule-item{
+  display:flex;gap:10px;align-items:flex-start;
+  font-size:10px;color:#666;line-height:1.5;
+}
+.rule-bullet{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--text-dim);flex-shrink:0;margin-top:1px;}
+
+/* ── Horizontal rule ── */
+hr{border:none;border-top:1px solid var(--border-mid);margin:32px 0;}
+
+/* ── Status strip ── */
+.status-strip{
+  display:flex;gap:12px;flex-wrap:wrap;
+  padding:12px 0;margin-bottom:20px;
+}
+.ss-item{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--text-muted);}
+.ss-dot{width:7px;height:7px;border-radius:50%;}
+.ss-built{background:var(--green);}
+.ss-partial{background:var(--amber);}
+.ss-designed{background:rgba(90,180,255,.5);}
+.ss-not{background:rgba(248,113,113,.4);}
+
+/* ── Convention table ── */
+.conv-table{width:100%;border-collapse:collapse;border:1px solid var(--border-mid);border-radius:3px;overflow:hidden;margin:10px 0;}
+.conv-table th{font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);background:var(--surface);padding:8px 13px;text-align:left;border-bottom:1px solid var(--border-mid);}
+.conv-table td{padding:7px 13px;border-bottom:1px solid var(--border);font-size:9px;vertical-align:top;}
+.conv-table tr:last-child td{border-bottom:none;}
+.conv-table tr:nth-child(even) td{background:var(--surface);}
+.conv-table code{font-size:8px;}
+
+/* status key in nav */
+nav .built-dot{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--green);margin-right:5px;}
+nav .partial-dot{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--amber);margin-right:5px;}
+nav .designed-dot{display:inline-block;width:5px;height:5px;border-radius:50%;background:rgba(90,180,255,.6);margin-right:5px;}
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+<!-- ── Sidebar ── -->
+<nav>
+  <div class="nav-title">System Spec v0.1</div>
+
+  <div class="nav-section">
+    <span class="nav-section-label">Foundation</span>
+    <a href="#overview">1. Overview</a>
+    <a href="#principles">2. Core Principles</a>
+    <a href="#status">3. Build Status</a>
+  </div>
+
+  <div class="nav-section">
+    <span class="nav-section-label">Architecture</span>
+    <a href="#vault">4. The Vault</a>
+    <a href="#taxonomy">5. Agent Taxonomy</a>
+    <a href="#hardware">6. Hardware Topology</a>
+    <a href="#model-routing">7. Model Routing</a>
+    <a href="#interface">8. Interface Layer</a>
+  </div>
+
+  <div class="nav-section">
+    <span class="nav-section-label">Contracts</span>
+    <a href="#agents-md">9. AGENTS.md Contract</a>
+    <a href="#skill-md">10. SKILL.md Contract</a>
+    <a href="#github-skills">11. GitHub Skills</a>
+    <a href="#quality-gate">12. Quality Gate</a>
+    <a href="#loopback">13. Loop-back</a>
+    <a href="#promote-gate">14. Promote Gate</a>
+  </div>
+
+  <div class="nav-section">
+    <span class="nav-section-label">Build</span>
+    <a href="#sequence">15. Phase Sequence</a>
+    <a href="#conventions">16. Conventions</a>
+    <a href="#existing">17. Existing Infrastructure</a>
+  </div>
+</nav>
+
+<!-- ── Main ── -->
+<main>
+
+<div class="doc-header">
+  <div class="doc-title">Hybrid Agent System</div>
+  <div class="doc-meta">
+    <div class="doc-meta-item">version <span>0.1-draft</span></div>
+    <div class="doc-meta-item">status <span>in-progress</span></div>
+    <div class="doc-meta-item">primary repo <span>f-campana/fodmapp</span></div>
+    <div class="doc-meta-item">vault <span>fabien-knowledge-os</span></div>
+    <div class="doc-meta-item">last updated <span>2026-04-19</span></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     1. OVERVIEW
+     ════════════════════════════════════════════ -->
+<div class="spec-section" id="overview">
+  <div class="spec-h2"><span class="spec-num">01</span> Overview</div>
+
+  <p>This document specifies a hybrid human-orchestrated agent system for software development. It defines the architecture, contracts, roles, hardware topology, build sequence, and conventions required to implement and operate the system.</p>
+
+  <p>The system is built incrementally — each phase uses what was built in the previous phase. It is designed to be agnostic across harnesses (Claude Code, Codex, Pi) and uses Markdown files as its primary communication protocol. The orchestrator is a human. Automation is earned, not assumed.</p>
+
+  <p>The primary product being built with and on this system is FODMAPP — an open FODMAP tracking and planning platform. The system is simultaneously the development tool and the subject of its own development (dogfooding).</p>
+
+  <div class="spec-h3">What this system is not</div>
+  <p>This is not an automated orchestration framework. There is no AI orchestrator. There are no agents spawning other agents without human dispatch. The system is a set of well-defined, scoped agents that a human routes between. The intelligence lives at the top of the stack, not in a routing layer.</p>
+</div>
+
+<!-- ════════════════════════════════════════════
+     2. CORE PRINCIPLES
+     ════════════════════════════════════════════ -->
+<div class="spec-section" id="principles">
+  <div class="spec-h2"><span class="spec-num">02</span> Core Principles</div>
+
+  <div class="def-grid">
+    <div class="def-row">
+      <div class="def-key">Human orchestrator</div>
+      <div class="def-val">The human makes all routing decisions, task decompositions, and promote gate judgments. No agent decides which agent runs next in production. Automation is for execution, not for orchestration.</div>
+    </div>
+    <div class="def-row alt">
+      <div class="def-key">Vault as bus</div>
+      <div class="def-val">All agent communication happens through Markdown files in the vault. Files are the API. No custom message-passing, no shared runtime state, no proprietary coordination layer. The vault is version-controlled and human-readable at all times.</div>
+    </div>
+    <div class="def-row">
+      <div class="def-key">Harness agnosticism</div>
+      <div class="def-val">AGENTS.md and SKILL.md are the harness contract. Pi, Claude Code, and Codex all read them. The system does not depend on any single harness. Skills written once work across all harnesses that implement the agentskills.io standard.</div>
+    </div>
+    <div class="def-row alt">
+      <div class="def-key">Pull before push</div>
+      <div class="def-val">Every automated trigger starts as a manual dispatch. A role earns automated triggering only after it has been dispatched manually and predictably for at least two weeks. Automation is a reward for proven reliability, not a starting assumption.</div>
+    </div>
+    <div class="def-row">
+      <div class="def-key">Dogfood the build</div>
+      <div class="def-val">Each phase uses what was built in the previous phase to build what comes next. The system builds itself. Agents write the changelog for the agents. Skills document the skills. The quality gate validates the quality gate scripts.</div>
+    </div>
+    <div class="def-row alt">
+      <div class="def-key">Full observability</div>
+      <div class="def-val">Every gate check is a command you can run yourself. Every agent output is a file you can read. Every failure is structured output you can inspect. Nothing the agent sees is hidden from you. This is Mario Zechner's observability principle applied to the full system.</div>
+    </div>
+    <div class="def-row">
+      <div class="def-key">Promote gate</div>
+      <div class="def-val">Nothing moves from agent output to durable memory without human review. Background agents write to <code>00 Inbox/</code> only. You review and approve before anything is promoted to <code>30 Memory/</code> or committed to the main branch.</div>
+    </div>
+    <div class="def-row alt">
+      <div class="def-key">Narrow context</div>
+      <div class="def-val">Agents load only what they need. Action agents operate on ≤10 files. Workflow agents load one domain map. Project agents load cross-domain maps. Strategy agents (you) hold the full vault. Loading more context than needed causes scope creep and costs more — both in tokens and in correctness.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     3. BUILD STATUS
+     ════════════════════════════════════════════ -->
+<div class="spec-section" id="status">
+  <div class="spec-h2"><span class="spec-num">03</span> Build Status</div>
+
+  <div class="status-strip">
+    <div class="ss-item"><div class="ss-dot ss-built"></div>Built — in production</div>
+    <div class="ss-item"><div class="ss-dot ss-partial"></div>Partial — started</div>
+    <div class="ss-item"><div class="ss-dot ss-designed"></div>Designed — not yet started</div>
+    <div class="ss-item"><div class="ss-dot ss-not"></div>Planned — future phase</div>
+  </div>
+
+  <table class="role-table">
+    <thead><tr><th>Capability</th><th>Status</th><th>Location</th></tr></thead>
+    <tbody>
+      <tr><td class="role-id">Root AGENTS.md</td><td><span class="tag t-built">built</span></td><td class="role-desc">AGENTS.md — full domain contract for FODMAPP</td></tr>
+      <tr><td class="role-id">LLM lint surface</td><td><span class="tag t-built">built</span></td><td class="role-desc">eslint.llm.config.mjs — warnings as errors for agent code</td></tr>
+      <tr><td class="role-id">CLI quality gate</td><td><span class="tag t-built">built</span></td><td class="role-desc">.github/scripts/quality-gate.sh — fast and --full modes</td></tr>
+      <tr><td class="role-id">Pre-push enforcement</td><td><span class="tag t-built">built</span></td><td class="role-desc">.githooks/pre-push — runs --full gate on every git push</td></tr>
+      <tr><td class="role-id">Agent branch identity</td><td><span class="tag t-built">built</span></td><td class="role-desc">codex/* branch prefix — agent branches distinguishable in git</td></tr>
+      <tr><td class="role-id">Skills folder</td><td><span class="tag t-partial">partial</span></td><td class="role-desc">skills/ — exists, $repo-git-hygiene-bootstrap confirmed, contents need taxonomy mapping</td></tr>
+      <tr><td class="role-id">Worktree model</td><td><span class="tag t-built">built</span></td><td class="role-desc">docs/ops/worktree-status.md — one initiative per worktree</td></tr>
+      <tr><td class="role-id">50 Sessions/ in vault</td><td><span class="tag" style="color:var(--red);background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.2);">not yet</span></td><td class="role-desc">Phase 0 — add to vault, add session summary instruction to AGENTS.md</td></tr>
+      <tr><td class="role-id">Loop-back wrapper</td><td><span class="tag" style="color:var(--red);background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.2);">not yet</span></td><td class="role-desc">Phase 2.5 — ~50 lines, feeds gate failure JSON back to agent</td></tr>
+      <tr><td class="role-id">GitHub read skills</td><td><span class="tag t-partial">partial</span></td><td class="role-desc">gh CLI present, not yet formalised as SKILL.md files</td></tr>
+      <tr><td class="role-id">GitHub write skills</td><td><span class="tag" style="color:var(--red);background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.2);">not yet</span></td><td class="role-desc">Phase 3 — branch, commit, open-pr as SKILL.md</td></tr>
+      <tr><td class="role-id">Slack gateway</td><td><span class="tag" style="color:var(--red);background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.2);">not yet</span></td><td class="role-desc">Phase 4 — Tachyon webhook listener + Slack workspace</td></tr>
+      <tr><td class="role-id">Ollama on Mac mini</td><td><span class="tag" style="color:var(--red);background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.2);">not yet</span></td><td class="role-desc">Phase 0 — prerequisite for background tier</td></tr>
+      <tr><td class="role-id">Tachyon configured</td><td><span class="tag" style="color:var(--red);background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.2);">not yet</span></td><td class="role-desc">Phase 4 — Pi, Ollama 1-3B, webhook listener, SSH from mini</td></tr>
+      <tr><td class="role-id">Session-promoter agent</td><td><span class="tag" style="color:var(--red);background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.2);">not yet</span></td><td class="role-desc">Phase 5 — reads flagged sessions, drafts memory note updates as PRs</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ════════════════════════════════════════════
+     4. THE VAULT
+     ════════════════════════════════════════════ -->
+<div class="spec-section" id="vault">
+  <div class="spec-h2"><span class="spec-num">04</span> The Vault</div>
+
+  <p>The vault (<code>fabien-knowledge-os</code>) is the system's shared state and communication bus. It is a git-backed Obsidian vault synced via <code>scripts/vault-sync</code>. All agents read from and write to the vault via the Markdown protocol described below.</p>
+
+  <div class="spec-h3">Folder Structure and Access Contract</div>
+  <table class="role-table">
+    <thead><tr><th>Path</th><th>Read</th><th>Write</th><th>Rule</th></tr></thead>
+    <tbody>
+      <tr><td class="role-id">00 Inbox/</td><td>you</td><td>background agents</td><td class="role-desc">All background output lands here first. Nothing leaves without your review. harness-feedback.md lives here — agents append improvement suggestions.</td></tr>
+      <tr><td class="role-id">10 Knowledge/</td><td>foreground agents</td><td>self-improve agents (via PR)</td><td class="role-desc">Lessons, concepts, exercises. Updated only via the promote gate. Never written directly by background agents.</td></tr>
+      <tr><td class="role-id">20 Projects/</td><td>foreground agents</td><td>foreground agents</td><td class="role-desc">Active project context. Foreground reads and writes freely during sessions. Background agents read task specs from here.</td></tr>
+      <tr><td class="role-id">30 Memory/</td><td>foreground agents</td><td>you only</td><td class="role-desc">Durable preferences, decisions, and constraints. Gate-protected. Background agents never write here. Only you promote to this folder.</td></tr>
+      <tr><td class="role-id">40 Sources/</td><td>foreground agents</td><td>source agent</td><td class="role-desc">Raw imported material. Source agent writes. Foreground reads for external context.</td></tr>
+      <tr><td class="role-id">50 Sessions/</td><td>background agents</td><td>foreground agents</td><td class="role-desc"><strong>New — not yet created.</strong> Session summaries with promote_to_memory flag. The handoff zone between tiers. Foreground writes, background reads to prepare promotions.</td></tr>
+      <tr><td class="role-id">99 Templates/</td><td>all agents</td><td>you only</td><td class="role-desc">Note schemas. Agents reference these for output format. Not modified by agents.</td></tr>
+      <tr><td class="role-id">index.md → maps</td><td>foreground entry point</td><td>index-rebuilder</td><td class="role-desc">Navigation root. Always loaded first by foreground agents. Fans out to domain maps. Maps are the context ceiling for workflow agents.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="spec-h3">Note Templates</div>
+  <p>Five typed templates live in <code>99 Templates/</code>. All agents producing vault notes must use the appropriate template.</p>
+  <div class="def-grid">
+    <div class="def-row"><div class="def-key">concept-note.md</div><div class="def-val">type, status (evergreen), updated, tags. Sections: Summary, Why it matters, Related.</div></div>
+    <div class="def-row alt"><div class="def-key">memory-note.md</div><div class="def-val">type, scope, confidence (verified|inferred), updated. Sections: Verified, Inferred.</div></div>
+    <div class="def-row"><div class="def-key">project-note.md</div><div class="def-val">type, project, status, updated. Sections: Context, Decisions, Constraints, Related.</div></div>
+    <div class="def-row alt"><div class="def-key">session-summary.md</div><div class="def-val">type, agent, project, date, promote_to_memory (no|yes). Sections: Objective, What happened, Decisions, Follow-up.</div></div>
+    <div class="def-row"><div class="def-key">source-note.md</div><div class="def-val">type, source_kind, author, captured. Sections: Summary, Relevance, Extracted ideas.</div></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     5. AGENT TAXONOMY
+     ════════════════════════════════════════════ -->
+<div class="spec-section" id="taxonomy">
+  <div class="spec-h2"><span class="spec-num">05</span> Agent Taxonomy</div>
+
+  <p>Four tiers. The distinguishing property between tiers is scope of judgment and context budget — not complexity. Domain verticals (React, TypeScript, RAG, ML, Architecture, Design, Security, Docs) cut through all tiers.</p>
+
+  <!-- Actions -->
+  <div class="tier-block ta">
+    <div class="tier-head">
+      <div class="tier-name">Actions</div>
+      <div class="tier-prop">One domain × one verb · ≤10 files · deterministic output · background tier</div>
+    </div>
+    <div class="tier-body">
+      <p>Action agents have two subtypes: <strong>Producers</strong> (generate an artifact) and <strong>Validators</strong> (inspect an artifact produced by another agent). Validators never fix — they report. Producers never validate — they produce. This separation is strict.</p>
+      <table class="role-table">
+        <thead><tr><th>ID</th><th>Type</th><th>Input</th><th>Output</th></tr></thead>
+        <tbody>
+          <tr><td class="role-id">react:implement</td><td>producer</td><td class="role-in">component spec</td><td class="role-out">component file(s)</td></tr>
+          <tr><td class="role-id">react:test</td><td>producer</td><td class="role-in">component file</td><td class="role-out">test suite</td></tr>
+          <tr><td class="role-id">react:story</td><td>producer</td><td class="role-in">component file</td><td class="role-out">Storybook stories</td></tr>
+          <tr><td class="role-id">react:review</td><td class="v-role">validator</td><td class="role-in">diff or PR</td><td class="role-out">review report → Inbox</td></tr>
+          <tr><td class="role-id">react:bug-find</td><td class="v-role">validator</td><td class="role-in">failing file(s)</td><td class="role-out">bug report → Inbox</td></tr>
+          <tr><td class="role-id">react:perf-audit</td><td class="v-role">validator</td><td class="role-in">component + render profile</td><td class="role-out">perf report → Inbox</td></tr>
+          <tr><td class="role-id">ts:type</td><td>producer</td><td class="role-in">shape / runtime value</td><td class="role-out">type definitions</td></tr>
+          <tr><td class="role-id">ts:audit</td><td class="v-role">validator</td><td class="role-in">module files</td><td class="role-out">type safety report → Inbox</td></tr>
+          <tr><td class="role-id">express:route</td><td>producer</td><td class="role-in">route spec</td><td class="role-out">handler file</td></tr>
+          <tr><td class="role-id">express:schema</td><td>producer</td><td class="role-in">payload shape</td><td class="role-out">Zod/Joi schema</td></tr>
+          <tr><td class="role-id">docs:write</td><td>producer</td><td class="role-in">code or spec</td><td class="role-out">documentation file</td></tr>
+          <tr><td class="role-id">docs:changelog</td><td>producer</td><td class="role-in">git diff (via gh:read-diff)</td><td class="role-out">changelog entry → PR</td></tr>
+          <tr><td class="role-id">docs:adr</td><td>producer</td><td class="role-in">decision brief</td><td class="role-out">Architecture Decision Record</td></tr>
+          <tr><td class="role-id">docs:drift</td><td class="v-role">validator</td><td class="role-in">code files + docs</td><td class="role-out">drift report → Inbox</td></tr>
+          <tr><td class="role-id">arch:solid</td><td class="v-role">validator</td><td class="role-in">module files</td><td class="role-out">SOLID audit → Inbox</td></tr>
+          <tr><td class="role-id">arch:clean</td><td class="v-role">validator</td><td class="role-in">module files + arch spec</td><td class="role-out">layer compliance report → Inbox</td></tr>
+          <tr><td class="role-id">arch:ddd-review</td><td class="v-role">validator</td><td class="role-in">domain model files</td><td class="role-out">DDD audit → Inbox</td></tr>
+          <tr><td class="role-id">arch:event-review</td><td class="v-role">validator</td><td class="role-in">event model files</td><td class="role-out">event sourcing audit → Inbox</td></tr>
+          <tr><td class="role-id">sec:audit</td><td class="v-role">validator</td><td class="role-in">code surface (diff or files)</td><td class="role-out">vulnerability report → Inbox</td></tr>
+          <tr><td class="role-id">sec:auth-review</td><td class="v-role">validator</td><td class="role-in">auth/middleware files</td><td class="role-out">auth model audit → Inbox</td></tr>
+          <tr><td class="role-id">rag:chunk</td><td>producer</td><td class="role-in">raw documents</td><td class="role-out">chunked documents</td></tr>
+          <tr><td class="role-id">rag:embed</td><td>producer</td><td class="role-in">chunked documents</td><td class="role-out">embeddings stored</td></tr>
+          <tr><td class="role-id">rag:retrieve</td><td>producer</td><td class="role-in">query + vector store</td><td class="role-out">retrieval interface</td></tr>
+          <tr><td class="role-id">rag:quality</td><td class="v-role">validator</td><td class="role-in">retrieval results + ground truth</td><td class="role-out">quality/recall report → Inbox</td></tr>
+          <tr><td class="role-id">design:token</td><td>producer</td><td class="role-in">design brief</td><td class="role-out">token files (DTCG)</td></tr>
+          <tr><td class="role-id">design:token-validate</td><td class="v-role">validator</td><td class="role-in">token files</td><td class="role-out">parity/consistency report → Inbox</td></tr>
+          <tr><td class="role-id">design:a11y-audit</td><td class="v-role">validator</td><td class="role-in">component markup</td><td class="role-out">WCAG compliance report → Inbox</td></tr>
+          <tr><td class="role-id">session-promoter</td><td>producer</td><td class="role-in">session summary (promote_to_memory: yes)</td><td class="role-out">draft memory note update → Inbox as PR</td></tr>
+          <tr><td class="role-id">index-rebuilder</td><td>producer</td><td class="role-in">vault folder scan</td><td class="role-out">updated map files + dead-link report</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Workflows -->
+  <div class="tier-block tw">
+    <div class="tier-head">
+      <div class="tier-name">Workflows</div>
+      <div class="tier-prop">Single domain · full lifecycle · chains actions · background (routine) or foreground (complex)</div>
+    </div>
+    <div class="tier-body">
+      <p>A Workflow chains producers and validators toward a complete domain outcome. It requires domain judgment about action ordering and edge cases. BDD is a workflow protocol — it changes the ordering of the same actions, not the actions themselves.</p>
+      <table class="role-table">
+        <thead><tr><th>ID</th><th>Domain</th><th>Chain (validators dashed)</th><th>Tier</th></tr></thead>
+        <tbody>
+          <tr><td class="role-id">react-feature</td><td>React</td><td class="role-desc">implement → test → story → ⟨review⟩ → ⟨perf-audit⟩ → docs:write</td><td>background (routine)</td></tr>
+          <tr><td class="role-id">api-endpoint</td><td>Express</td><td class="role-desc">route → schema → ⟨auth-review⟩ → ⟨sec:injection⟩ → docs:write</td><td>background (routine)</td></tr>
+          <tr><td class="role-id">type-safety</td><td>TypeScript</td><td class="role-desc">ts:type → ts:narrow → ⟨ts:audit⟩ → ⟨ts:strict⟩</td><td>background (routine)</td></tr>
+          <tr><td class="role-id">rag-pipeline</td><td>RAG / Data</td><td class="role-desc">chunk → embed → retrieve → ⟨rag:quality⟩ → ⟨data:schema-validate⟩</td><td>background (routine)</td></tr>
+          <tr><td class="role-id">design-system</td><td>Design</td><td class="role-desc">token → spec → ⟨token-validate⟩ → ⟨contrast⟩ → ⟨a11y-audit⟩</td><td>background (routine)</td></tr>
+          <tr><td class="role-id">ddd-bounded-context</td><td>Architecture/DDD</td><td class="role-desc">docs:adr → schema → ⟨arch:ddd-review⟩ → ⟨arch:solid⟩ → docs:write</td><td>foreground (complex)</td></tr>
+          <tr><td class="role-id">bdd-cycle</td><td>BDD (ordering protocol)</td><td class="role-desc">docs:write(spec) → react:test(stubs) → react:implement → ⟨react:review⟩</td><td>foreground (complex)</td></tr>
+          <tr><td class="role-id">ml-experiment</td><td>ML</td><td class="role-desc">ml:feature → ml:eval → ⟨ml:bias-check⟩ → ⟨ml:leakage⟩ → docs:write</td><td>foreground (complex — different lifecycle)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Projects -->
+  <div class="tier-block tp">
+    <div class="tier-head">
+      <div class="tier-name">Projects</div>
+      <div class="tier-prop">Multiple domains · single goal · coordinates workflows · foreground tier</div>
+    </div>
+    <div class="tier-body">
+      <p>Projects coordinate workflows across domain boundaries. You are present and steering. You route between workflows, resolve conflicts, and make tradeoff calls. Projects always live in the foreground tier.</p>
+      <table class="role-table">
+        <thead><tr><th>ID</th><th>Workflows involved</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td class="role-id">full-stack-feature</td><td class="role-desc">react-feature + api-endpoint + type-safety</td><td>+ sec:audit + docs:changelog on completion</td></tr>
+          <tr><td class="role-id">event-sourced-module</td><td class="role-desc">ddd-bounded-context + api-endpoint</td><td>+ arch:event-review + arch:clean injected at project level</td></tr>
+          <tr><td class="role-id">search-product</td><td class="role-desc">rag-pipeline + react-feature</td><td>+ nlp:extract + react:perf-audit on the UI</td></tr>
+          <tr><td class="role-id">design-system-rebuild</td><td class="role-desc">design-system + react-feature</td><td>+ docs:coverage on all public components</td></tr>
+          <tr><td class="role-id">ml-feature-to-prod</td><td class="role-desc">ml-experiment + api-endpoint</td><td>Mandatory human checkpoint between ML eval and API wiring</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Strategy -->
+  <div class="tier-block ts">
+    <div class="tier-head">
+      <div class="tier-name">Strategy</div>
+      <div class="tier-prop">Product / roadmap scope · full vault · you are the primary agent</div>
+    </div>
+    <div class="tier-body">
+      <p>Strategy requires the full vault, all project context, memory, and external research. You are the Strategy agent. Automated Strategy agents are rare and require your explicit approval before any downstream action.</p>
+      <div class="def-grid">
+        <div class="def-row"><div class="def-key">architecture-decision</div><div class="def-val">Evaluates architectural options across the full system. Invokes arch validators across all candidates. Produces ADR.</div></div>
+        <div class="def-row alt"><div class="def-key">product-ideation</div><div class="def-val">Broad exploration. No fixed agent chain. You orchestrate directly. Produces decision memo or opportunity map.</div></div>
+        <div class="def-row"><div class="def-key">codebase-evolution</div><div class="def-val">Multi-sprint refactor plan. Decomposes into sequenced Projects. Identifies ordering constraints and blast radius.</div></div>
+        <div class="def-row alt"><div class="def-key">system-audit</div><div class="def-val">Full validator sweep across the codebase. Produces prioritised remediation backlog. Closest to an automated Strategy agent — still requires your approval before remediation runs.</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     6. HARDWARE TOPOLOGY
+     ════════════════════════════════════════════ -->
+<div class="spec-section" id="hardware">
+  <div class="spec-h2"><span class="spec-num">06</span> Hardware Topology</div>
+
+  <div class="node-grid">
+
+    <div class="node-card nc-mbp">
+      <div class="nc-head">
+        <div class="nc-name">MacBook Pro</div>
+        <div class="nc-spec">Apple Silicon · macOS · foreground tier</div>
+      </div>
+      <div class="nc-body">
+        <div class="nc-section-label">Primary tools</div>
+        <div class="nc-items">
+          <span class="nc-item">Claude Code</span>
+          <span class="nc-item">Codex App</span>
+          <span class="nc-item">Ghostty</span>
+          <span class="nc-item">Tmux</span>
+        </div>
+        <div class="nc-section-label" style="margin-top:6px;">Models</div>
+        <div class="nc-items">
+          <span class="nc-item">Claude Sonnet / Opus</span>
+          <span class="nc-item">Codex (OpenAI)</span>
+        </div>
+        <div class="nc-section-label" style="margin-top:6px;">Agent tiers</div>
+        <div class="nc-items">
+          <span class="nc-item">Strategy</span>
+          <span class="nc-item">Projects</span>
+          <span class="nc-item">Complex Workflows</span>
+        </div>
+        <div class="nc-section-label" style="margin-top:6px;">Vault role</div>
+        <div class="nc-items">
+          <span class="nc-item">Primary read/write</span>
+          <span class="nc-item">vault-sync → GitHub</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="node-card nc-mini">
+      <div class="nc-head">
+        <div class="nc-name">Mac mini M1</div>
+        <div class="nc-spec">Apple Silicon · macOS · background tier · heavy</div>
+      </div>
+      <div class="nc-body">
+        <div class="nc-section-label">Primary tools</div>
+        <div class="nc-items">
+          <span class="nc-item">Pi workers</span>
+          <span class="nc-item">Tmux named sessions</span>
+          <span class="nc-item">Ollama</span>
+          <span class="nc-item">GitHub CLI</span>
+        </div>
+        <div class="nc-section-label" style="margin-top:6px;">Models</div>
+        <div class="nc-items">
+          <span class="nc-item">Qwen2.5-Coder-32B</span>
+          <span class="nc-item">Mistral-Small</span>
+          <span class="nc-item">Claude API (fallback)</span>
+        </div>
+        <div class="nc-section-label" style="margin-top:6px;">Agent tiers</div>
+        <div class="nc-items">
+          <span class="nc-item">Routine Workflows</span>
+          <span class="nc-item">Heavy Validators</span>
+          <span class="nc-item">Mechanical Actions</span>
+        </div>
+        <div class="nc-section-label" style="margin-top:6px;">Vault role</div>
+        <div class="nc-items">
+          <span class="nc-item">Read-only clone</span>
+          <span class="nc-item">PR writes via gh CLI</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="node-card nc-tach">
+      <div class="nc-head">
+        <div class="nc-name">Particle Tachyon</div>
+        <div class="nc-spec">Qualcomm QCM6490 · Ubuntu 24.04 · gateway + lightweight background</div>
+      </div>
+      <div class="nc-body">
+        <div class="nc-section-label">Primary tools</div>
+        <div class="nc-items">
+          <span class="nc-item">Pi workers</span>
+          <span class="nc-item">Slack webhook listener</span>
+          <span class="nc-item">Ollama (ARM)</span>
+          <span class="nc-item">GitHub CLI</span>
+        </div>
+        <div class="nc-section-label" style="margin-top:6px;">Models</div>
+        <div class="nc-items">
+          <span class="nc-item">Phi-3-mini</span>
+          <span class="nc-item">Qwen2.5-Coder-1.5B</span>
+          <span class="nc-item">Qualcomm AI Hub (future)</span>
+        </div>
+        <div class="nc-section-label" style="margin-top:6px;">Agent tiers</div>
+        <div class="nc-items">
+          <span class="nc-item">Dispatch router</span>
+          <span class="nc-item">Lightweight Actions</span>
+          <span class="nc-item">Watcher agents</span>
+          <span class="nc-item">Webhook triggers</span>
+        </div>
+        <div class="nc-section-label" style="margin-top:6px;">Connectivity</div>
+        <div class="nc-items">
+          <span class="nc-item">5G EtherSIM (independent)</span>
+          <span class="nc-item">WiFi 6E (local)</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="spec-h3">Key Property: The Tachyon is the Gateway</div>
+  <p>The Mac mini is only reachable on the local network. The Tachyon has an independent 5G connection. It receives all Slack dispatch messages and GitHub webhooks regardless of local network state, routes heavyweight tasks to the Mac mini over the local network, and handles lightweight actions locally. It is the always-on ambient interface layer.</p>
+</div>
+
+<!-- ════════════════════════════════════════════
+     7. MODEL ROUTING
+     ════════════════════════════════════════════ -->
+<div class="spec-section" id="model-routing">
+  <div class="spec-h2"><span class="spec-num">07</span> Model Routing</div>
+
+  <p>Start with everything on Claude. Migrate to OSS models as each node comes online. The routing matrix below is the target state at Phase 7, not the starting state. Never guess about model quality — migrate with evidence from real Claude runs.</p>
+
+  <table class="role-table">
+    <thead><tr><th>Task class</th><th>Model</th><th>Node</th><th>Rationale</th></tr></thead>
+    <tbody>
+      <tr><td class="role-id">Strategy · Planning</td><td>Claude Opus / Sonnet</td><td>MBP</td><td class="role-desc">Maximum reasoning quality. Output shapes irreversible decisions. No substitute.</td></tr>
+      <tr><td class="role-id">Complex Workflows</td><td>Claude Sonnet</td><td>MBP</td><td class="role-desc">Cross-action judgment required. OSS models risk wrong ordering or missed edge cases.</td></tr>
+      <tr><td class="role-id">Routine Workflows</td><td>Ollama 7B+ (Qwen2.5-Coder-32B)</td><td>Mac mini</td><td class="role-desc">Deterministic chain ordering. OSS models perform well when the ordering is specified in AGENTS.md.</td></tr>
+      <tr><td class="role-id">High-stakes Validators</td><td>Claude Sonnet</td><td>MBP</td><td class="role-desc">Findings may change architectural direction. Quality of reasoning matters.</td></tr>
+      <tr><td class="role-id">Routine Validators</td><td>Ollama 7B+</td><td>Mac mini</td><td class="role-desc">Pattern matching. Deterministic checks. OSS models perform well.</td></tr>
+      <tr><td class="role-id">Mechanical Producers</td><td>Ollama 1–3B (Phi-3-mini)</td><td>Tachyon</td><td class="role-desc">Narrow input spec, single file output. Small models are sufficient and fast.</td></tr>
+      <tr><td class="role-id">Dispatch + routing</td><td>No model — Node.js</td><td>Tachyon</td><td class="role-desc">Pure control plane logic. LLM involvement is wasteful and slower.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="contract">
+    <div class="contract-title">Routing escalation rule</div>
+    <div class="contract-body">If an OSS model's output goes to Inbox and consistently fails your review or the loop-back gate, that task class is escalated to Claude. The routing exception is written into the AGENTS.md routing section and the feedback-merger picks it up.</div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     8. INTERFACE LAYER
+     ════════════════════════════════════════════ -->
+<div class="spec-section" id="interface">
+  <div class="spec-h2"><span class="spec-num">08</span> Interface Layer</div>
+
+  <div class="spec-h3">Foreground — Claude Code and Codex Apps (MBP)</div>
+  <p>Active pairing sessions. High-attention, conversational, back-and-forth judgment. Architecture decisions, complex debugging, design decisions. Sessions always end with a session summary written to <code>50 Sessions/</code> with a <code>promote_to_memory</code> gate.</p>
+
+  <div class="spec-h3">Background — Ghostty + Tmux named sessions (Mac mini + Tachyon)</div>
+  <p>Named tmux sessions map to named agent roles. Each boots with a scoped AGENTS.md and narrow context. You dispatch and check back. Session names follow the convention: <code>[role]:[task-slug]</code> e.g. <code>react-worker:ingredient-search</code>.</p>
+
+  <div class="spec-h3">Ambient — Slack (Tachyon gateway)</div>
+  <p>A dedicated Slack workspace receives task dispatch from any device (phone, MBP, any network) and posts agent output, PR links, and Inbox review requests back as threads. Channel structure:</p>
+
+  <div class="code-block">#dispatch          ← you post tasks here from any device
+#inbox-review      ← all agent outputs land here for your approval
+#react-worker      ← react-feature workflow channel
+#api-worker        ← api-endpoint workflow channel
+#docs-worker       ← changelog, drift detection, docs:write
+#rag-worker        ← rag-pipeline workflow channel
+#maintenance       ← stale scanner, index-rebuilder, feedback-merger
+#harness-feedback  ← agents post AGENTS.md improvement suggestions</div>
+
+  <div class="spec-h3">Trigger Model</div>
+  <p><strong>Pull now.</strong> You dispatch manually. You read Inbox. You approve or reject. Every role starts in pull mode.<br>
+  <strong>Push later (Phase 7).</strong> Roles dispatched predictably for ≥2 weeks in pull mode become candidates for automated triggers. Qualification criterion: you dispatch a role so consistently and mechanically that your judgment adds nothing to the trigger decision. Only then automate the trigger. The gate still holds — agents write to PRs, you approve.</p>
+</div>
+
+<!-- ════════════════════════════════════════════
+     9. AGENTS.MD CONTRACT
+     ════════════════════════════════════════════ -->
+<div class="spec-section" id="agents-md">
+  <div class="spec-h2"><span class="spec-num">09</span> AGENTS.md Contract</div>
+
+  <p>Every agent context boots from an AGENTS.md file. Root AGENTS.md covers the full repository. Scoped AGENTS.md files are per-role and per-context. Both are version-controlled and reviewed like code.</p>
+
+  <div class="spec-h3">Root AGENTS.md (foreground tier)</div>
+  <div class="code-block"># AGENTS.md
+
+## Scope
+Apply to the whole repository root.
+
+## Context Boot Sequence
+1. Read index.md from the vault to understand navigation structure.
+2. Load the domain map that matches the task (react-map, backend-map, typescript-map, etc.).
+3. Load the relevant project note from 20 Projects/ if the task is project-scoped.
+4. Load applicable memory notes from 30 Memory/ that match the task domain.
+5. Do not load lessons or full concept files unless the task requires that depth.
+
+## Skill Routing
+[List skill triggers and their SKILL.md paths]
+
+## Collaboration Contract
+- Short-lived branches from main.
+- Conventional Commit format.
+- Semantic PR titles.
+- Run quality-gate.sh before requesting merge.
+- Loop-back gate runs before opening any PR.
+
+## Safety Rules
+- Never rewrite history on shared branches.
+- Never commit secrets or credentials.
+- Never write directly to 30 Memory/ — Inbox only.
+
+## Session Summary Instruction
+At the end of every session, write a session summary to 50 Sessions/ using the
+session-summary template. Set promote_to_memory: no by default. Set to yes only
+if the session revealed a decision, constraint, or gap that should persist.
+If AGENTS.md itself has a gap or error, append a one-line note to 00 Inbox/harness-feedback.md.
+
+## Reporting
+- State changed files and why.
+- State validation commands run and results.
+- State remaining risk or follow-up.</div>
+
+  <div class="spec-h3">Scoped AGENTS.md (background tier — per role)</div>
+  <div class="code-block"># AGENTS.md — [role-id]
+
+## Role
+[One sentence: what this agent does, nothing else.]
+
+## Scope
+[Exact paths this agent may read. Exact output path.]
+
+## Skill
+[Path to the SKILL.md file for this role.]
+
+## Gate
+[Which quality gate script runs on output before PR is opened.]
+[max_iterations: 3]
+[escalate_on_failure: foreground]
+
+## Input Contract
+[What this agent receives as input. Structured precisely.]
+
+## Output Contract
+[What this agent produces. Where it writes. Format required.]
+
+## Stop Condition
+[When the agent stops and waits. Never self-escalates beyond max_iterations.]
+
+## Forbidden
+[What this agent must never do. At minimum: never write to 30 Memory/.]</div>
+
+  <div class="contract">
+    <div class="contract-title">Size constraint</div>
+    <div class="contract-body">Root AGENTS.md: under 200 lines. Scoped AGENTS.md: under 80 lines. If a file exceeds these limits, it contains too much. Split into a referenced file rather than expanding the AGENTS.md.</div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     10. SKILL.MD CONTRACT
+     ════════════════════════════════════════════ -->
+<div class="spec-section" id="skill-md">
+  <div class="spec-h2"><span class="spec-num">10</span> SKILL.md Contract</div>
+
+  <p>A skill file packages a reusable capability. Skills conform to the agentskills.io standard and are portable across Pi, Claude Code, and Codex. Skills live in <code>skills/</code> at the repo root.</p>
+
+  <div class="code-block">---
+name: [domain]:[verb]        # e.g. react:implement
+version: 1.0.0
+type: producer | validator   # producer generates artifacts, validator reports on them
+domain: react                # the domain this skill operates in
+tier: action | workflow      # which taxonomy tier
+triggers:                    # slash commands or natural language triggers
+  - /react-implement
+  - "implement this component"
+gates:                       # quality gate scripts that run on output
+  - .github/scripts/quality-gate.sh --llm-only
+max_iterations: 3            # loop-back retry limit
+escalate_on_failure: foreground  # where to escalate after max iterations
+model_preference: ollama-7b  # routing hint — can be overridden by harness
+node_preference: mini        # routing hint — can be overridden
+---
+
+# [Skill name]
+
+## When to use this skill
+[Precise description of the trigger conditions. One scenario, not many.]
+
+## What it does
+[What the skill produces or validates. Concrete, not abstract.]
+
+## Input
+[Exact expected input format and required files.]
+
+## Steps
+1. [First step — specific and executable]
+2. [Second step]
+...
+
+## Output
+[Exact output format, target path, and how it is written.]
+
+## Failure modes
+[What goes wrong and what the agent should do on each failure.]
+
+## Examples
+[At least one concrete input → output example. Anti-examples if helpful.]</div>
+
+  <div class="contract">
+    <div class="contract-title">Key property: skills are injectable validators</div>
+    <div class="contract-body">Validator skills have no fixed position in a workflow. They slot in after any producer agent. They never fix what they find — they report it. A workflow AGENTS.md specifies where validators are injected in the chain. The skill file itself does not encode position.</div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     11. GITHUB SKILLS
+     ════════════════════════════════════════════ -->
+<div class="spec-section" id="github-skills">
+  <div class="spec-h2"><span class="spec-num">11</span> GitHub Skills</div>
+
+  <p>Four capability tiers. Each tier unlocks a new class of agent behaviour. Each has a different gate requirement. Read skills must exist before write skills. Write skills must exist before PR workflow skills.</p>
+
+  <table class="role-table">
+    <thead><tr><th>Tier</th><th>Phase</th><th>Gate</th><th>Skills</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="role-id" style="color:var(--teal);">Read</td>
+        <td>Phase 1</td>
+        <td class="role-desc">None — read-only, no side effects</td>
+        <td class="role-desc"><code>gh:read-file</code> · <code>gh:read-diff</code> · <code>gh:read-history</code> · <code>gh:read-pr</code></td>
+      </tr>
+      <tr>
+        <td class="role-id" style="color:var(--blue);">Write</td>
+        <td>Phase 3</td>
+        <td class="role-desc">You review PR before merge. Always branch + draft PR. Never main directly.</td>
+        <td class="role-desc"><code>gh:create-branch</code> · <code>gh:commit-file</code> · <code>gh:open-pr</code></td>
+      </tr>
+      <tr>
+        <td class="role-id" style="color:var(--accent);">PR Workflow</td>
+        <td>Phase 5</td>
+        <td class="role-desc">You approve merge. Agents participate in review lifecycle.</td>
+        <td class="role-desc"><code>gh:comment-pr</code> · <code>gh:request-review</code> · <code>gh:mark-ready</code></td>
+      </tr>
+      <tr>
+        <td class="role-id" style="color:var(--red);">Webhooks</td>
+        <td>Phase 7</td>
+        <td class="role-desc">≥2 weeks pull-mode proven. Gate still holds — agents write PRs, you approve.</td>
+        <td class="role-desc"><code>gh:on-ci-failure</code> · <code>gh:on-pr-open</code> · <code>gh:on-push-main</code></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="contract">
+    <div class="contract-title">Write skill invariant</div>
+    <div class="contract-body">A write skill may only be invoked after the agent's output has passed the loop-back gate. <code>gh:open-pr</code> is never the first thing an agent calls. The gate runs first. If the gate fails and max iterations are exhausted, the agent escalates to foreground rather than opening a PR.</div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     12. QUALITY GATE
+     ════════════════════════════════════════════ -->
+<div class="spec-section" id="quality-gate">
+  <div class="spec-h2"><span class="spec-num">12</span> Quality Gate</div>
+
+  <p><code>.github/scripts/quality-gate.sh</code> is the system's primary enforcement mechanism. It runs in two modes. Both are already built in FODMAPP. The loop-back wrapper is the only missing piece.</p>
+
+  <div class="spec-h3">Fast mode (loop-back iterations)</div>
+  <p>Runs: <code>pnpm lint:llm</code> + <code>tsc --noEmit</code>. Captures structured JSON output. Under 30 seconds. Designed for agent retry loops. Produces machine-readable feedback the agent can act on directly.</p>
+
+  <div class="spec-h3">Full mode (pre-push + CI)</div>
+  <p>Runs: <code>prettier --check</code> + <code>pnpm lint:ci</code> + <code>pnpm lint:llm</code> + <code>tsc --noEmit</code> + <code>pnpm test</code> + <code>pnpm build</code> + <code>changeset:ci:lint:all</code> + <code>ci-api-pr.sh</code> (when applicable).</p>
+
+  <div class="spec-h3">LLM lint surface</div>
+  <p>The <code>eslint.llm.config.mjs</code> applies stricter rules to agent-produced code: all warnings become errors, <code>no-explicit-any</code> is an error, <code>ban-ts-comment</code> is an error, <code>react-hooks/exhaustive-deps</code> is an error. Human code warnings remain warnings. CI runs <code>lint:llm:ci</code> as a hard failure on all <code>codex/*</code> branches.</p>
+
+  <div class="contract">
+    <div class="contract-title">Key property — full observability</div>
+    <div class="contract-body">Every gate check is a command you can run yourself. The agent sees the same output you see when you run <code>pnpm lint:llm 2>&amp;1 | jq</code>. The loop-back feeds the agent structured ESLint JSON — the agent never has to guess what went wrong.</div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     13. LOOP-BACK
+     ════════════════════════════════════════════ -->
+<div class="spec-section" id="loopback">
+  <div class="spec-h2"><span class="spec-num">13</span> Loop-back Gate</div>
+
+  <p>The loop-back wrapper is a small script (~50 lines) that runs the fast quality gate, captures structured failure output, and feeds it back to the agent as a structured feedback prompt. It limits retries to a configurable maximum (default: 3) and escalates to the foreground tier on exhaustion.</p>
+
+  <div class="gate-flow">
+    <div class="gf-step"><span class="gf-actor gf-agent">agent</span><div class="gf-body">Produces files. Commits to a <code>codex/*</code> or <code>bg/*</code> branch. Does not push or open a PR.</div></div>
+    <div class="gf-step"><span class="gf-actor gf-gate">gate</span><div class="gf-body">Loop-back wrapper runs <code>quality-gate.sh --llm-only</code>. Captures exit code and ESLint JSON. If exit 0: proceed to PR. If non-zero: build structured feedback object and re-invoke agent.<div class="gf-note">Feedback object: { gate, exit, violations: [{file, line, rule, message}], iteration, max_iterations }</div></div></div>
+    <div class="gf-step"><span class="gf-actor gf-agent">agent</span><div class="gf-body">Receives structured feedback. Fixes exactly the reported violations. Re-runs. Bounded at max_iterations (default 3). On exhaustion: writes full failure log to <code>00 Inbox/gate-failure-[branch].md</code> and sends Slack notification. Does not open a PR.</div></div>
+    <div class="gf-step"><span class="gf-actor gf-gate">gate</span><div class="gf-body">Exit 0 confirmed. Loop-back invokes <code>gh:open-pr</code> as a draft. PR description includes gate iteration count and lint surface used. Branch is pushed at this point.</div></div>
+    <div class="gf-step"><span class="gf-actor gf-ci">CI</span><div class="gf-body"><code>quality-gate.sh --full</code> runs on PR open. Source of truth. <code>lint:llm:ci</code> as hard failure. Validator agents may comment on the PR with domain-specific findings.</div></div>
+    <div class="gf-step"><span class="gf-actor gf-you">you</span><div class="gf-body">Judgment gate. All deterministic checks have passed. You review for correctness of abstraction, architectural fit, and intent match. Approve or request changes.</div></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     14. PROMOTE GATE
+     ════════════════════════════════════════════ -->
+<div class="spec-section" id="promote-gate">
+  <div class="spec-h2"><span class="spec-num">14</span> Promote Gate + Self-Improvement Loop</div>
+
+  <p>The promote gate is the mechanism by which agent session outputs become durable system knowledge. It has two checkpoints: your review of the session summary, and your merge of the background agent's drafted update.</p>
+
+  <div class="gate-flow">
+    <div class="gf-step"><span class="gf-actor gf-agent">foreground</span><div class="gf-body">Writes session summary to <code>50 Sessions/[project]-[date].md</code> using the session-summary template. Default: <code>promote_to_memory: no</code>. Set to <code>yes</code> only if the session revealed a persistent decision, constraint, or knowledge gap.</div></div>
+    <div class="gf-step"><span class="gf-actor gf-you">you</span><div class="gf-body">Review session summary. Decide whether it warrants promotion. If no: session archived, no further action. If yes: dispatch the session-promoter background agent via Slack.</div></div>
+    <div class="gf-step"><span class="gf-actor gf-agent">bg agent</span><div class="gf-body">session-promoter reads the flagged summary. Identifies the target note (concept, memory, or project note). Drafts an update. Opens a draft PR against the vault repository. Posts PR link to Slack #inbox-review.</div></div>
+    <div class="gf-step"><span class="gf-actor gf-you">you</span><div class="gf-body">Review the PR. Merge if the update is accurate and worth keeping. Close if not. Background agents never commit directly to <code>30 Memory/</code> — all updates arrive as PRs you merge.</div></div>
+  </div>
+
+  <div class="spec-h3">Harness feedback loop</div>
+  <p>If any session reveals a gap, error, or ambiguity in AGENTS.md or a skill file, the agent appends a one-line note to <code>00 Inbox/harness-feedback.md</code>. You review this file weekly. The feedback-merger agent drafts AGENTS.md patch PRs from high-confidence items. You merge. The system's instructions improve over time.</p>
+</div>
+
+<!-- ════════════════════════════════════════════
+     15. PHASED BUILD SEQUENCE
+     ════════════════════════════════════════════ -->
+<div class="spec-section" id="sequence">
+  <div class="spec-h2"><span class="spec-num">15</span> Phased Build Sequence</div>
+  <p>Eight phases. Each phase uses what was built before to build what comes next. The forcing question at every phase boundary: <em>"Can I use what I just built to build the next thing?"</em></p>
+
+  <div class="phase-table">
+
+    <div class="phase-row">
+      <div class="phase-head">
+        <div class="phase-num">0</div>
+        <div class="phase-title">Substrate</div>
+        <div class="phase-status-group">
+          <span class="tag" style="color:var(--red);background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.2);">not yet</span>
+        </div>
+      </div>
+      <div class="phase-body">
+        <div class="phase-desc">Build the minimum viable foundation. No agents yet. Prove the loop closes manually end-to-end once.</div>
+        <div class="phase-builds">
+          <span class="pb-item">Add 50 Sessions/ to vault</span>
+          <span class="pb-item">Foreground AGENTS.md with session summary instruction</span>
+          <span class="pb-item">Scoped AGENTS.md template for background agents</span>
+          <span class="pb-item">Ollama on Mac mini — first model running</span>
+          <span class="pb-item">Pi on Mac mini — manual dispatch proven</span>
+          <span class="pb-item">Manual loop closed once end-to-end</span>
+        </div>
+        <div class="phase-dogfood">Dogfood: vault-sync commits the AGENTS.md files. Manual Pi dispatch tests the loop.</div>
+      </div>
+    </div>
+
+    <div class="phase-row">
+      <div class="phase-head">
+        <div class="phase-num">1</div>
+        <div class="phase-title">GitHub Read Skills</div>
+        <div class="phase-status-group">
+          <span class="tag" style="color:var(--red);background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.2);">not yet</span>
+        </div>
+      </div>
+      <div class="phase-body">
+        <div class="phase-desc">Agents can now observe the repository. No side effects. Safe to deploy without a gate. Prerequisite for every validator and most producers.</div>
+        <div class="phase-builds">
+          <span class="pb-item">gh:read-file SKILL.md</span>
+          <span class="pb-item">gh:read-diff SKILL.md</span>
+          <span class="pb-item">gh:read-history SKILL.md</span>
+          <span class="pb-item">gh:read-pr SKILL.md</span>
+        </div>
+        <div class="phase-dogfood">Dogfood: vault-sync commits the read skill files to GitHub. Agents can now read the commit that added them.</div>
+      </div>
+    </div>
+
+    <div class="phase-row">
+      <div class="phase-head">
+        <div class="phase-num">2</div>
+        <div class="phase-title">First Agents + Loop-back</div>
+        <div class="phase-status-group">
+          <span class="tag" style="color:var(--red);background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.2);">not yet</span>
+        </div>
+      </div>
+      <div class="phase-body">
+        <div class="phase-desc">First working producer and validator. Observe failure modes manually. Codify as CLI gate. Build the loop-back wrapper.</div>
+        <div class="phase-builds">
+          <span class="pb-item">docs:changelog — reads diff, writes changelog</span>
+          <span class="pb-item">docs:drift — checks code/docs alignment</span>
+          <span class="pb-item">Inbox workflow — output lands in 00 Inbox/ manually</span>
+          <span class="pb-item">Promote gate — manual review and merge</span>
+          <span class="pb-item">Loop-back wrapper (~50 lines) — feeds gate JSON back to agent</span>
+        </div>
+        <div class="phase-dogfood">Dogfood: docs:changelog writes its own changelog entry after being built. docs:drift checks its own AGENTS.md for drift.</div>
+      </div>
+    </div>
+
+    <div class="phase-row">
+      <div class="phase-head">
+        <div class="phase-num">3</div>
+        <div class="phase-title">GitHub Write Skills</div>
+        <div class="phase-status-group">
+          <span class="tag" style="color:var(--red);background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.2);">not yet</span>
+        </div>
+      </div>
+      <div class="phase-body">
+        <div class="phase-desc">Agents materialise output as PRs. Review shifts from Inbox files to GitHub PRs. Same gate, better tooling.</div>
+        <div class="phase-builds">
+          <span class="pb-item">gh:create-branch SKILL.md</span>
+          <span class="pb-item">gh:commit-file SKILL.md</span>
+          <span class="pb-item">gh:open-pr SKILL.md (always draft, loop-back must pass first)</span>
+          <span class="pb-item">docs:changelog now opens PRs instead of Inbox files</span>
+        </div>
+        <div class="phase-dogfood">Dogfood: write skills tested by having docs:changelog open its first real PR — on the changelog for adding the write skills themselves.</div>
+      </div>
+    </div>
+
+    <div class="phase-row">
+      <div class="phase-head">
+        <div class="phase-num">4</div>
+        <div class="phase-title">Slack + Tachyon Gateway</div>
+        <div class="phase-status-group">
+          <span class="tag" style="color:var(--red);background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.2);">not yet</span>
+        </div>
+      </div>
+      <div class="phase-body">
+        <div class="phase-desc">Dispatch from anywhere. PR links posted to Slack. The system becomes ambient — accessible from your phone.</div>
+        <div class="phase-builds">
+          <span class="pb-item">Tachyon: Ollama running (1-3B ARM models)</span>
+          <span class="pb-item">Tachyon: Pi installed and tested</span>
+          <span class="pb-item">Slack workspace — channel structure per taxonomy</span>
+          <span class="pb-item">Tachyon: webhook listener wired to Slack channels</span>
+          <span class="pb-item">Tachyon → Mac mini routing for heavy tasks</span>
+        </div>
+        <div class="phase-dogfood">Dogfood: dispatch docs:changelog from phone via Slack. It runs on Tachyon, opens a PR, posts link back to Slack. First fully ambient loop.</div>
+      </div>
+    </div>
+
+    <div class="phase-row">
+      <div class="phase-head">
+        <div class="phase-num">5</div>
+        <div class="phase-title">Self-Improvement Loop</div>
+        <div class="phase-status-group">
+          <span class="tag" style="color:var(--red);background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.2);">not yet</span>
+        </div>
+      </div>
+      <div class="phase-body">
+        <div class="phase-desc">The promote gate gets tooling. Memory updates become PRs. Backfill sessions from Phases 0–4.</div>
+        <div class="phase-builds">
+          <span class="pb-item">session-promoter agent</span>
+          <span class="pb-item">gh:comment-pr, gh:request-review, gh:mark-ready SKILL.md files</span>
+          <span class="pb-item">index-rebuilder agent</span>
+          <span class="pb-item">Backfill: Phases 0-4 session summaries promoted</span>
+          <span class="pb-item">harness-feedback.md review workflow established</span>
+        </div>
+        <div class="phase-dogfood">Dogfood: session-promoter promotes its own build session. The system stores a record of building itself.</div>
+      </div>
+    </div>
+
+    <div class="phase-row">
+      <div class="phase-head">
+        <div class="phase-num">6</div>
+        <div class="phase-title">Full Workflow Chains</div>
+        <div class="phase-status-group">
+          <span class="tag" style="color:var(--red);background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.2);">not yet</span>
+        </div>
+      </div>
+      <div class="phase-body">
+        <div class="phase-desc">Full workflow chains live. Model routing rules active. The system is doing real product work on FODMAPP.</div>
+        <div class="phase-builds">
+          <span class="pb-item">react-feature workflow</span>
+          <span class="pb-item">api-endpoint workflow</span>
+          <span class="pb-item">rag-pipeline workflow</span>
+          <span class="pb-item">type-safety workflow</span>
+          <span class="pb-item">OSS model routing rules — mini vs Tachyon by task class</span>
+        </div>
+        <div class="phase-dogfood">Dogfood: react-feature workflow builds a Slack channel component for the system's own dispatch interface. System builds its own front door.</div>
+      </div>
+    </div>
+
+    <div class="phase-row">
+      <div class="phase-head">
+        <div class="phase-num">7</div>
+        <div class="phase-title">Webhook Triggers</div>
+        <div class="phase-status-group">
+          <span class="tag" style="color:var(--red);background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.2);">not yet</span>
+        </div>
+      </div>
+      <div class="phase-body">
+        <div class="phase-desc">Pull becomes push for proven roles. CI events trigger agents automatically. Qualification: ≥2 weeks dispatched predictably in pull mode.</div>
+        <div class="phase-builds">
+          <span class="pb-item">gh:on-ci-failure — dispatches bug-find / ts:audit on CI fail</span>
+          <span class="pb-item">gh:on-pr-open — dispatches review workflow on PR open</span>
+          <span class="pb-item">gh:on-push-main — dispatches changelog and drift on push to main</span>
+          <span class="pb-item">Qualification audit — which roles have earned push triggering</span>
+        </div>
+        <div class="phase-dogfood">Dogfood: CI failure on the system's own repo triggers a bug-find action. The system debugs itself.</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     16. CONVENTIONS
+     ════════════════════════════════════════════ -->
+<div class="spec-section" id="conventions">
+  <div class="spec-h2"><span class="spec-num">16</span> Conventions</div>
+
+  <table class="conv-table">
+    <thead><tr><th>Convention</th><th>Format</th><th>Examples</th></tr></thead>
+    <tbody>
+      <tr><td>Agent IDs</td><td><code>[domain]:[verb]</code></td><td><code>react:implement</code> · <code>docs:changelog</code> · <code>rag:retrieve</code></td></tr>
+      <tr><td>Workflow IDs</td><td><code>[domain]-[lifecycle]</code></td><td><code>react-feature</code> · <code>api-endpoint</code> · <code>rag-pipeline</code></td></tr>
+      <tr><td>Project IDs</td><td><code>[intent]-[scope]</code></td><td><code>full-stack-feature</code> · <code>event-sourced-module</code></td></tr>
+      <tr><td>Branch prefixes — human</td><td><code>feat/* · fix/* · chore/* · docs/*</code></td><td><code>feat/ingredient-search</code></td></tr>
+      <tr><td>Branch prefixes — agent</td><td><code>codex/* · bg/* · skill/*</code></td><td><code>codex/ingredient-search</code> · <code>skill/react-implement</code></td></tr>
+      <tr><td>Tmux session names</td><td><code>[role]:[task-slug]</code></td><td><code>react-worker:ingredient-search</code> · <code>docs-watcher:drift-check</code></td></tr>
+      <tr><td>Session summary filenames</td><td><code>[project]-[YYYY-MM-DD].md</code></td><td><code>fodmapp-2026-04-19.md</code></td></tr>
+      <tr><td>Inbox files</td><td><code>[agent-id]-[date].md</code></td><td><code>react-review-2026-04-19.md</code></td></tr>
+      <tr><td>Gate failure files</td><td><code>gate-failure-[branch].md</code></td><td><code>gate-failure-codex-ingredient-search.md</code></td></tr>
+      <tr><td>Commit format</td><td>Conventional Commits</td><td><code>feat(ui): add ingredient search components</code></td></tr>
+      <tr><td>PR title format</td><td>Conventional Commits (semantic)</td><td><code>feat(ui): add ingredient search components</code></td></tr>
+      <tr><td>Memory note scope values</td><td>project · domain · global</td><td><code>scope: project</code> (FODMAPP-specific)</td></tr>
+      <tr><td>Memory note confidence values</td><td>verified · inferred</td><td><code>confidence: inferred</code> (not yet tested in production)</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ════════════════════════════════════════════
+     17. EXISTING INFRASTRUCTURE (FODMAPP)
+     ════════════════════════════════════════════ -->
+<div class="spec-section" id="existing">
+  <div class="spec-h2"><span class="spec-num">17</span> Existing Infrastructure</div>
+
+  <p>FODMAPP (<code>github.com/f-campana/fodmapp</code>) already has significant infrastructure that Phase 0 builds on. The system is not starting from scratch.</p>
+
+  <div class="spec-h3">What is built and production-grade</div>
+  <div class="rule-list">
+    <div class="rule-item"><span class="rule-bullet">→</span>Root AGENTS.md with full domain contract — scope, skill routing, collaboration contract, safety rules, worktree model, Phase 3 data contract (scoring semantics, snapshot lock, bilingual requirements, rank 2 exclusion, API sort contract).</div>
+    <div class="rule-item"><span class="rule-bullet">→</span><code>eslint.llm.config.mjs</code> — dedicated LLM lint surface. Warnings as errors for agent-produced code. <code>lint:llm:ci</code> as hard failure in CI.</div>
+    <div class="rule-item"><span class="rule-bullet">→</span><code>.github/scripts/quality-gate.sh</code> — fast and <code>--full</code> modes. Covers format, lint (base + LLM), typecheck, tests, build, changeset validation.</div>
+    <div class="rule-item"><span class="rule-bullet">→</span><code>.githooks/pre-push</code> — automatic <code>--full</code> gate on every <code>git push</code>. Delete-only pushes skipped.</div>
+    <div class="rule-item"><span class="rule-bullet">→</span><code>codex/*</code> branch prefix — agent-produced branches are distinguishable in git history and PR list.</div>
+    <div class="rule-item"><span class="rule-bullet">→</span>Worktree model — <code>docs/ops/worktree-status.md</code>, one initiative per worktree. Maps cleanly onto the foreground/background tier split.</div>
+    <div class="rule-item"><span class="rule-bullet">→</span>Documentation governance — <code>docs/README.md</code>, <code>docs/foundation/documentation-personas.md</code>, lifecycle status vocabulary, canonical doc routing. PR template includes Documentation Governance block.</div>
+    <div class="rule-item"><span class="rule-bullet">→</span>Changeset workflow — <code>.changeset/</code>, changeset:ci:lint:all, exemption labeling.</div>
+  </div>
+
+  <div class="spec-h3">What needs to be done in Phase 0</div>
+  <div class="rule-list">
+    <div class="rule-item"><span class="rule-bullet">→</span>Add <code>50 Sessions/</code> to vault. Add session summary instruction to root AGENTS.md.</div>
+    <div class="rule-item"><span class="rule-bullet">→</span>Install Ollama on Mac mini. Confirm Pi runs and can dispatch an agent manually.</div>
+    <div class="rule-item"><span class="rule-bullet">→</span>Write first scoped AGENTS.md for the <code>docs:changelog</code> role — use the Phase 3 data section as the structural template for domain contracts.</div>
+    <div class="rule-item"><span class="rule-bullet">→</span>Inspect and map <code>skills/</code> folder contents against the Action taxonomy. Document what exists and what is missing.</div>
+  </div>
+
+  <div class="spec-h3">The loop-back wrapper is the highest-priority addition</div>
+  <p>Everything needed to build the loop-back already exists: <code>quality-gate.sh</code> produces exit codes, <code>eslint.llm.config.mjs</code> produces structured JSON violations, and Pi can re-invoke the agent with a prompt. The wrapper is the connective tissue — approximately 50 lines of shell or Node.js. It transforms the gate from a wall into a feedback channel. Build it in Phase 2 immediately after the first two agents are proven.</p>
+</div>
+
+</main>
+</div>
+</body>
+</html>

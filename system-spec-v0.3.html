@@ -1,0 +1,1321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sanctum + Bifrost — System Specification v0.3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ── PRESS RUNE TOKENS ── */
+:root {
+  --bg:       #F7F7F5;
+  --s1:       #EFEFEC;
+  --s2:       #E8E4DE;
+  --border:   #1A1814;
+  --bm:       #C8C4BE;
+  --text:     #1A1814;
+  --silver:   #5A5450;
+  --dim:      #A09890;
+  --muted:    #E8E4DE;
+
+  --blue:     #E84E08;
+  --blue-d:   rgba(232,78,8,.08);
+  --green:    #2A6A3A;
+  --green-d:  rgba(42,106,58,.08);
+  --red:      #B03030;
+
+  --font-d: 'Syne', sans-serif;
+  --font-b: 'DM Sans', sans-serif;
+  --font-m: 'JetBrains Mono', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── ORANGE TOP BAR ── */
+.topbar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 40px;
+  background: #E84E08;
+  border-bottom: 2px solid #1A1814;
+  z-index: 200;
+  display: flex;
+  align-items: stretch;
+}
+.topbar-brand {
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  border-right: 2px solid rgba(26,24,20,.3);
+  gap: 10px;
+}
+.topbar-name {
+  font-family: var(--font-d);
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: -.03em;
+  color: #F7F7F5;
+}
+.topbar-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #F7F7F5;
+  opacity: .6;
+}
+.topbar-right {
+  margin-left: auto;
+  display: flex;
+  align-items: stretch;
+}
+.topbar-item {
+  font-family: var(--font-m);
+  font-size: 9px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: rgba(247,247,245,.55);
+  padding: 0 14px;
+  border-left: 2px solid rgba(26,24,20,.25);
+  display: flex;
+  align-items: center;
+}
+.topbar-item.hi { color: #F7F7F5; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-b);
+  font-size: 14px;
+  line-height: 1.7;
+  display: flex;
+  min-height: 100vh;
+  padding-top: 40px;
+}
+
+/* ── SIDEBAR ── */
+.sidebar {
+  width: 260px;
+  flex-shrink: 0;
+  position: fixed;
+  top: 40px;
+  left: 0;
+  height: calc(100vh - 40px);
+  overflow-y: auto;
+  background: var(--bg);
+  border-right: 2px solid var(--border);
+  display: flex;
+  flex-direction: column;
+}
+
+.sb-brand {
+  padding: 16px 20px 14px;
+  border-bottom: 2px solid var(--border);
+}
+.sb-brand-name {
+  font-family: var(--font-d);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: -.02em;
+  color: var(--text);
+  margin-bottom: 3px;
+}
+.sb-brand-meta {
+  font-family: var(--font-m);
+  font-size: 9px;
+  letter-spacing: .1em;
+  color: var(--dim);
+}
+.sb-brand-meta span { color: var(--blue); }
+
+.sb-nav {
+  padding: 10px 0;
+  flex: 1;
+}
+.sb-section {
+  font-family: var(--font-m);
+  font-size: 8px;
+  font-weight: 500;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--dim);
+  padding: 8px 20px 4px;
+}
+.sb-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 20px;
+  font-size: 12px;
+  color: var(--silver);
+  text-decoration: none;
+  border-left: 2px solid transparent;
+  transition: color .12s, background .12s;
+  line-height: 1.4;
+}
+.sb-link:hover { color: var(--text); background: var(--s1); }
+.sb-link.active { color: var(--blue); border-left-color: var(--blue); background: var(--blue-d); }
+.sb-num {
+  font-family: var(--font-m);
+  font-size: 8px;
+  color: var(--dim);
+  width: 16px;
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.sb-footer {
+  padding: 12px 20px;
+  border-top: 2px solid var(--border);
+}
+.sb-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-m);
+  font-size: 8px;
+  color: var(--dim);
+}
+.sb-dot { width: 5px; height: 5px; border-radius: 0; background: var(--blue); }
+
+/* ── MAIN CONTENT ── */
+.main {
+  margin-left: 260px;
+  flex: 1;
+  max-width: 860px;
+  padding: 52px 60px 120px;
+}
+
+/* ── DOCUMENT HEADER ── */
+.doc-header {
+  padding-bottom: 36px;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 48px;
+}
+.doc-eyebrow {
+  font-family: var(--font-m);
+  font-size: 9px;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--blue);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.doc-eyebrow::before { content: ''; width: 20px; height: 2px; background: var(--blue); }
+.doc-title {
+  font-family: var(--font-d);
+  font-size: 40px;
+  font-weight: 800;
+  letter-spacing: -.04em;
+  line-height: .95;
+  color: var(--text);
+  margin-bottom: 20px;
+}
+.doc-meta {
+  display: flex;
+  gap: 0;
+  flex-wrap: wrap;
+  border: 2px solid var(--border);
+}
+.doc-meta-item {
+  font-family: var(--font-m);
+  font-size: 9px;
+  letter-spacing: .08em;
+  color: var(--silver);
+  padding: 6px 14px;
+  border-right: 2px solid var(--border);
+}
+.doc-meta-item:last-child { border-right: none; }
+.doc-meta-item strong { color: var(--text); font-weight: 500; }
+
+/* ── SECTIONS ── */
+.section {
+  margin-bottom: 60px;
+  scroll-margin-top: 24px;
+}
+
+.section-header {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  margin-bottom: 28px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--border);
+}
+.section-num {
+  font-family: var(--font-m);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: .12em;
+  color: var(--blue);
+  flex-shrink: 0;
+}
+.section-title {
+  font-family: var(--font-d);
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -.03em;
+  color: var(--text);
+}
+
+h3 {
+  font-family: var(--font-d);
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: -.02em;
+  color: var(--text);
+  margin: 28px 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--bm);
+}
+h3:first-child { margin-top: 0; }
+
+p {
+  color: var(--silver);
+  font-weight: 300;
+  margin-bottom: 14px;
+  line-height: 1.8;
+}
+p:last-child { margin-bottom: 0; }
+p strong { color: var(--text); font-weight: 500; }
+
+/* ── PRINCIPLE CARDS ── */
+.principles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  margin: 20px 0;
+  border: 2px solid var(--border);
+}
+.principle {
+  background: var(--bg);
+  border-right: 2px solid var(--border);
+  border-bottom: 2px solid var(--border);
+  padding: 16px 18px;
+}
+.principle:nth-child(even) { border-right: none; }
+.principle:nth-last-child(-n+2) { border-bottom: none; }
+.principle-name {
+  font-family: var(--font-d);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: -.01em;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.principle-body {
+  font-size: 12px;
+  font-weight: 300;
+  color: var(--silver);
+  line-height: 1.65;
+}
+.principle.highlight { background: var(--blue-d); }
+.principle.highlight .principle-name { color: var(--blue); }
+
+/* ── STATUS TABLE ── */
+.status-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  font-family: var(--font-m);
+  font-size: 10px;
+  border: 2px solid var(--border);
+}
+.status-table th {
+  text-align: left;
+  padding: 7px 12px;
+  font-size: 8px;
+  font-weight: 500;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--dim);
+  border-bottom: 2px solid var(--border);
+  background: var(--s1);
+}
+.status-table td {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--bm);
+  color: var(--silver);
+  vertical-align: top;
+}
+.status-table tr:last-child td { border-bottom: none; }
+.status-table tr:hover td { background: var(--blue-d); }
+.st-done { color: var(--green); }
+.st-pending { color: var(--dim); }
+.st-partial { color: #9E6000; }
+
+/* ── CODE BLOCKS ── */
+.code-block {
+  background: var(--s1);
+  border: 2px solid var(--border);
+  overflow: hidden;
+  margin: 16px 0;
+}
+.cb-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  border-bottom: 2px solid var(--border);
+  background: var(--s2);
+}
+.cb-filename {
+  font-family: var(--font-m);
+  font-size: 9px;
+  color: var(--silver);
+}
+.cb-filename span { color: var(--blue); }
+.cb-lang {
+  margin-left: auto;
+  font-family: var(--font-m);
+  font-size: 8px;
+  color: var(--dim);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.cb-body {
+  padding: 14px 16px;
+  font-family: var(--font-m);
+  font-size: 11px;
+  color: var(--silver);
+  line-height: 1.8;
+  white-space: pre;
+  overflow-x: auto;
+}
+.cb-body .c { color: var(--bm); font-style: italic; }
+.cb-body .k { color: var(--blue); font-weight: 500; }
+.cb-body .v { color: var(--text); }
+.cb-body .s { color: var(--green); }
+
+/* ── PHASE BLOCKS ── */
+.phase {
+  border: 2px solid var(--border);
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+.phase-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--s1);
+  border-bottom: 2px solid var(--border);
+}
+.phase-num {
+  font-family: var(--font-m);
+  font-size: 9px;
+  font-weight: 500;
+  color: var(--blue);
+  letter-spacing: .1em;
+}
+.phase-name {
+  font-family: var(--font-d);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: -.02em;
+  color: var(--text);
+}
+.phase-status {
+  margin-left: auto;
+  font-family: var(--font-m);
+  font-size: 8px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border: 2px solid;
+}
+.ps-ready { color: var(--blue); background: var(--blue-d); border-color: var(--blue); }
+.ps-pending { color: var(--dim); background: var(--muted); border-color: var(--bm); }
+.phase-body { padding: 12px 16px; }
+.phase-body ul { padding-left: 0; list-style: none; }
+.phase-body li {
+  font-size: 12px;
+  color: var(--silver);
+  font-weight: 300;
+  padding: 4px 0 4px 14px;
+  position: relative;
+  border-bottom: 1px solid var(--bm);
+}
+.phase-body li:last-child { border-bottom: none; }
+.phase-body li::before { content: '—'; position: absolute; left: 0; color: var(--dim); font-size: 10px; top: 5px; }
+.phase-dogfood {
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: var(--blue-d);
+  border: 2px solid var(--blue);
+  font-size: 11px;
+  color: var(--blue);
+  font-family: var(--font-m);
+}
+.phase-dogfood::before { content: 'Dogfood: '; font-weight: 500; }
+
+/* ── INLINE CODE ── */
+code {
+  font-family: var(--font-m);
+  font-size: 10.5px;
+  color: var(--blue);
+  background: var(--blue-d);
+  padding: 1px 5px;
+  border: 1px solid rgba(232,78,8,.2);
+}
+
+/* ── DOMAIN TABLE ── */
+.domain-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  border: 2px solid var(--border);
+}
+.domain-table th {
+  text-align: left;
+  padding: 7px 14px;
+  font-family: var(--font-m);
+  font-size: 8px;
+  font-weight: 500;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--dim);
+  border-bottom: 2px solid var(--border);
+  background: var(--s1);
+}
+.domain-table td {
+  padding: 10px 14px;
+  font-size: 12px;
+  border-bottom: 1px solid var(--bm);
+  color: var(--silver);
+}
+.domain-table tr:last-child td { border-bottom: none; }
+.domain-table tr:hover td { background: var(--blue-d); }
+.dt-done { color: var(--green); font-family: var(--font-m); font-size: 10px; }
+.dt-pending { color: var(--dim); font-family: var(--font-m); font-size: 10px; }
+
+/* ── RUNE CARDS ── */
+.rune-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  margin: 20px 0;
+  border: 2px solid var(--border);
+}
+.rune-card {
+  background: var(--bg);
+  border-right: 2px solid var(--border);
+  border-bottom: 2px solid var(--border);
+  padding: 16px 18px;
+}
+.rune-card:nth-child(even) { border-right: none; }
+.rune-card:nth-last-child(-n+2) { border-bottom: none; }
+.rune-name {
+  font-family: var(--font-d);
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: -.02em;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.rune-archetypes {
+  font-family: var(--font-m);
+  font-size: 9px;
+  color: var(--blue);
+  letter-spacing: .08em;
+  margin-bottom: 6px;
+}
+.rune-radar {
+  font-family: var(--font-m);
+  font-size: 9px;
+  color: var(--dim);
+  margin-bottom: 6px;
+}
+.rune-use {
+  font-size: 11px;
+  font-weight: 300;
+  color: var(--silver);
+  line-height: 1.5;
+}
+
+/* ── AXES TABLE ── */
+.axes-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  border: 2px solid var(--border);
+}
+.axes-table th {
+  text-align: left;
+  padding: 7px 14px;
+  font-family: var(--font-m);
+  font-size: 8px;
+  font-weight: 500;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--dim);
+  border-bottom: 2px solid var(--border);
+  background: var(--s1);
+}
+.axes-table td {
+  padding: 9px 14px;
+  font-size: 12px;
+  border-bottom: 1px solid var(--bm);
+}
+.axes-table tr:last-child td { border-bottom: none; }
+.axes-table td:first-child { font-family: var(--font-d); font-size: 13px; font-weight: 800; color: var(--text); }
+.axes-table td:nth-child(2) { font-family: var(--font-m); font-size: 10px; color: var(--dim); }
+.axes-table td:nth-child(3) { color: var(--silver); font-weight: 300; }
+
+/* ── HW TABLE ── */
+.hw-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  border: 2px solid var(--border);
+}
+.hw-table th {
+  text-align: left;
+  padding: 7px 14px;
+  font-family: var(--font-m);
+  font-size: 8px;
+  font-weight: 500;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--dim);
+  border-bottom: 2px solid var(--border);
+  background: var(--s1);
+}
+.hw-table td {
+  padding: 10px 14px;
+  font-size: 12px;
+  border-bottom: 1px solid var(--bm);
+  color: var(--silver);
+  vertical-align: top;
+}
+.hw-table tr:last-child td { border-bottom: none; }
+.hw-table td:first-child { font-family: var(--font-m); font-size: 10px; color: var(--text); }
+
+/* ── CONVENTIONS TABLE ── */
+.conv-table { width: 100%; border-collapse: collapse; margin: 16px 0; border: 2px solid var(--border); }
+.conv-table th {
+  text-align: left;
+  padding: 7px 14px;
+  font-family: var(--font-m);
+  font-size: 8px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--dim);
+  border-bottom: 2px solid var(--border);
+  background: var(--s1);
+}
+.conv-table td {
+  padding: 8px 14px;
+  font-family: var(--font-m);
+  font-size: 10px;
+  border-bottom: 1px solid var(--bm);
+  color: var(--silver);
+}
+.conv-table tr:last-child td { border-bottom: none; }
+.conv-table td:first-child { color: var(--text); }
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--bm); }
+</style>
+</head>
+<body>
+
+<!-- ORANGE TOP BAR -->
+<div class="topbar">
+  <div class="topbar-brand">
+    <div class="topbar-dot"></div>
+    <span class="topbar-name">Sanctum + Bifrost</span>
+  </div>
+  <div class="topbar-right">
+    <div class="topbar-item hi">System Spec</div>
+    <div class="topbar-item">v0.3</div>
+    <div class="topbar-item">2026-04-22</div>
+    <div class="topbar-item">Phase 0 — Ready</div>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sb-brand">
+    <div class="sb-brand-name">Sanctum + Bifrost</div>
+    <div class="sb-brand-meta">System Spec · v<span>0.3</span> · 2026-04-22</div>
+  </div>
+  <div class="sb-nav">
+    <div class="sb-section">System</div>
+    <a href="#overview" class="sb-link active"><span class="sb-num">01</span>Overview</a>
+    <a href="#principles" class="sb-link"><span class="sb-num">02</span>Core Principles</a>
+    <a href="#status" class="sb-link"><span class="sb-num">03</span>Build Status</a>
+    <div class="sb-section">Knowledge</div>
+    <a href="#sanctum" class="sb-link"><span class="sb-num">04</span>Sanctum</a>
+    <a href="#bifrost" class="sb-link"><span class="sb-num">05</span>Bifrost</a>
+    <a href="#domain-deepening" class="sb-link"><span class="sb-num">06</span>Domain Deepening</a>
+    <a href="#design" class="sb-link"><span class="sb-num">07</span>Design Pipeline</a>
+    <div class="sb-section">Operations</div>
+    <a href="#agents" class="sb-link"><span class="sb-num">08</span>Agent Taxonomy</a>
+    <a href="#hardware" class="sb-link"><span class="sb-num">09</span>Hardware</a>
+    <a href="#models" class="sb-link"><span class="sb-num">10</span>Model Routing</a>
+    <a href="#interface" class="sb-link"><span class="sb-num">11</span>Interface Layer</a>
+    <div class="sb-section">Contracts</div>
+    <a href="#agents-md" class="sb-link"><span class="sb-num">12</span>AGENTS.md</a>
+    <a href="#skill-md" class="sb-link"><span class="sb-num">13</span>SKILL.md</a>
+    <a href="#github" class="sb-link"><span class="sb-num">14</span>GitHub Skills</a>
+    <a href="#quality" class="sb-link"><span class="sb-num">15</span>Quality Gate</a>
+    <a href="#loopback" class="sb-link"><span class="sb-num">16</span>Loop-back</a>
+    <a href="#promote" class="sb-link"><span class="sb-num">17</span>Promote Gate</a>
+    <a href="#loop" class="sb-link"><span class="sb-num">18</span>Operating Loop</a>
+    <div class="sb-section">Build</div>
+    <a href="#phases" class="sb-link"><span class="sb-num">19</span>Phase Sequence</a>
+    <a href="#conventions" class="sb-link"><span class="sb-num">20</span>Conventions</a>
+  </div>
+  <div class="sb-footer">
+    <div class="sb-status"><div class="sb-dot"></div>Phase 0 — Ready to build</div>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main class="main">
+
+<!-- DOCUMENT HEADER -->
+<div class="doc-header">
+  <div class="doc-eyebrow">System Specification</div>
+  <h1 class="doc-title">Sanctum + Bifrost</h1>
+  <div class="doc-meta">
+    <div class="doc-meta-item"><strong>Version</strong> 0.3</div>
+    <div class="doc-meta-item"><strong>Status</strong> Design pipeline validated · Phase 0 ready</div>
+    <div class="doc-meta-item"><strong>Rune</strong> Press v1.0.0</div>
+    <div class="doc-meta-item"><strong>Updated</strong> 2026-04-22</div>
+  </div>
+</div>
+
+<!-- 01 OVERVIEW -->
+<section class="section" id="overview">
+  <div class="section-header">
+    <span class="section-num">01</span>
+    <span class="section-title">Overview</span>
+  </div>
+  <p>A hybrid human-orchestrated agent operating system built from a clean slate. Two shared infrastructure layers — Sanctum and Bifrost — and any number of product consumers.</p>
+  <div class="principles" style="grid-template-columns:1fr;gap:10px;margin-bottom:20px;">
+    <div class="principle">
+      <div class="principle-name">Sanctum</div>
+      <div class="principle-body">The compiled knowledge wiki. Owns everything the system knows — sources, synthesis, memory, indexes, project context, and the design identity library. Maintained by agents, read by humans and agents. Knowledge compounds over time.</div>
+    </div>
+    <div class="principle">
+      <div class="principle-name">Bifrost</div>
+      <div class="principle-body">The schema and operating system that governs agent behaviour. Owns skills, contracts, routing rules, verification logic, and prompt assembly rules. Projects consume both Sanctum and Bifrost.</div>
+    </div>
+    <div class="principle highlight">
+      <div class="principle-name">Runestone</div>
+      <div class="principle-body">The browsable web interface to Sanctum's design identity library. Renders each Rune as a live experience and exposes the routing guide. Built using the design pipeline itself — first dogfood project.</div>
+    </div>
+  </div>
+  <p>The orchestrator is a human. Automation is earned, not assumed. Intelligence lives at the top, not in a routing layer. No AI orchestrator. No agents spawning agents without human dispatch.</p>
+
+  <h3>The Karpathy model</h3>
+  <div class="code-block">
+    <div class="cb-body"><span class="k">Raw sources</span>     <span class="c">Sanctum/40 Sources/</span>       immutable — LLM reads, never writes
+<span class="k">Compiled wiki</span>   <span class="c">Sanctum/10 Knowledge/ etc.</span>  LLM-maintained synthesis, compounds over time
+<span class="k">Schema</span>          <span class="c">Bifrost/</span>                    operating instructions and skills
+
+Key property: the wiki is a <span class="v">persistent compounding artifact</span>.
+Good answers become wiki pages. Nothing useful disappears into chat history.</div>
+  </div>
+</section>
+
+<!-- 02 PRINCIPLES -->
+<section class="section" id="principles">
+  <div class="section-header">
+    <span class="section-num">02</span>
+    <span class="section-title">Core Principles</span>
+  </div>
+  <div class="principles">
+    <div class="principle">
+      <div class="principle-name">Human orchestrator</div>
+      <div class="principle-body">All routing decisions, task decompositions, and promote gate judgments belong to the human. Automation is for execution, not orchestration.</div>
+    </div>
+    <div class="principle">
+      <div class="principle-name">Sources are immutable</div>
+      <div class="principle-body">Raw source material in <code>40 Sources/</code> is never modified by agents. Provenance must be traceable. Errors stay in sources; corrections live in the compiled zone.</div>
+    </div>
+    <div class="principle">
+      <div class="principle-name">The wiki compounds</div>
+      <div class="principle-body">Every useful synthesis gets filed back into the wiki. Nothing valuable disappears into chat history. The system gets smarter with every interaction.</div>
+    </div>
+    <div class="principle">
+      <div class="principle-name">Bifrost ≠ knowledge</div>
+      <div class="principle-body">Bifrost defines how the wiki is maintained. Sanctum contains what the wiki knows. These are different concerns and must never blur.</div>
+    </div>
+    <div class="principle">
+      <div class="principle-name">Pull before push</div>
+      <div class="principle-body">Every automated trigger starts as manual dispatch. A role earns automated triggering only after ≥2 weeks of predictable manual use.</div>
+    </div>
+    <div class="principle">
+      <div class="principle-name">Dogfood the build</div>
+      <div class="principle-body">Each phase uses what was built in the previous phase. The design pipeline builds the Runestone. The wiki/ingest skill files the notes from its own creation.</div>
+    </div>
+    <div class="principle">
+      <div class="principle-name">Promote gate</div>
+      <div class="principle-body">Nothing moves from agent output to durable wiki without human review. Background agents write to <code>00 Inbox/</code> only.</div>
+    </div>
+    <div class="principle highlight">
+      <div class="principle-name">Domain deepening</div>
+      <div class="principle-body">Each domain starts with a lightweight skill and earns a full contract through real use. When failures become specific, recurring, and consequential — invest in the deep process: research → model → validate → spec.</div>
+    </div>
+  </div>
+</section>
+
+<!-- 03 STATUS -->
+<section class="section" id="status">
+  <div class="section-header">
+    <span class="section-num">03</span>
+    <span class="section-title">Build Status</span>
+  </div>
+  <table class="status-table">
+    <thead><tr><th>Capability</th><th>Status</th><th>Phase</th></tr></thead>
+    <tbody>
+      <tr><td>Design pipeline contract</td><td class="st-done">✓ written</td><td>Phase 0</td></tr>
+      <tr><td>Sanctum repo + structure</td><td class="st-pending">not yet</td><td>Phase 0</td></tr>
+      <tr><td>Bifrost repo + structure</td><td class="st-pending">not yet</td><td>Phase 0</td></tr>
+      <tr><td>log.md in Sanctum</td><td class="st-pending">not yet</td><td>Phase 0</td></tr>
+      <tr><td>Four core Rune files</td><td class="st-pending">not yet</td><td>Phase 0 — design</td></tr>
+      <tr><td>Routing guide</td><td class="st-pending">not yet</td><td>Phase 0 — design</td></tr>
+      <tr><td>design/curator + builder + validator</td><td class="st-pending">not yet</td><td>Phase 0 — design</td></tr>
+      <tr><td>Ollama on Mac mini</td><td class="st-pending">not yet</td><td>Phase 0 prereq</td></tr>
+      <tr><td>Runestone v1</td><td class="st-pending">not yet</td><td>Phase 1</td></tr>
+      <tr><td>GitHub read skills</td><td class="st-pending">not yet</td><td>Phase 1</td></tr>
+      <tr><td>design/dialogue + harvester</td><td class="st-pending">not yet</td><td>Phase 1</td></tr>
+      <tr><td>Loop-back wrapper</td><td class="st-pending">not yet</td><td>Phase 2</td></tr>
+      <tr><td>docs/changelog + drift</td><td class="st-pending">not yet</td><td>Phase 2</td></tr>
+      <tr><td>wiki/ingest + query + lint</td><td class="st-pending">not yet</td><td>Phase 3</td></tr>
+      <tr><td>GitHub write skills</td><td class="st-pending">not yet</td><td>Phase 4</td></tr>
+      <tr><td>Slack + Tachyon gateway</td><td class="st-pending">not yet</td><td>Phase 5</td></tr>
+      <tr><td>Session-promoter + distill</td><td class="st-pending">not yet</td><td>Phase 6</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 04 SANCTUM -->
+<section class="section" id="sanctum">
+  <div class="section-header">
+    <span class="section-num">04</span>
+    <span class="section-title">Sanctum — The Compiled Wiki</span>
+  </div>
+  <p>Git-backed private repository. The system's long-term memory, research archive, knowledge base, and design identity library. Two zones with different mutability rules.</p>
+  <div class="code-block">
+    <div class="cb-header"><span class="cb-filename"><span>sanctum/</span></span><span class="cb-lang">structure</span></div>
+    <div class="cb-body">sanctum/
+  README.md · AGENTS.md · system-spec.md (symlink)
+
+  <span class="k">00 Inbox/</span>             ← all agent output, pending promote gate
+  <span class="k">01 Indexes/</span>           ← index.md, log.md, domain maps
+  <span class="k">10 Knowledge/</span>
+    Articles/ · Concepts/ · Lessons/ · Exercises/
+    <span class="v">Design/</span>
+      <span class="v">runes/</span>            ← Rune files (design identity library)
+        argent-decisif.md · neon-humaniste.md
+        signal-brut.md · encre-editoriale.md
+      routing-guide.md  ← six-question Rune selection guide
+      design-principles.md
+  <span class="k">20 Projects/</span>
+  <span class="k">30 Memory/</span>            ← Environment/ · Preferences/ · Project Memory/
+  <span class="k">40 Sources/</span>           ← IMMUTABLE — LLM reads, never writes
+    Design/sessions/ · Design/references/
+    Notes Imports/ · Web Clips/ · Repos/ · Papers/ · Transcripts/
+  <span class="k">60 Assets/</span>
+  <span class="k">90 Archive/</span>
+  <span class="k">99 Templates/</span>         ← concept, lesson, memory, project, source, session, rune</div>
+  </div>
+  <p><code>50 Outputs/</code> is intentionally absent. Transient outputs land in <code>00 Inbox/</code> and are promoted or discarded. Per Karpathy: good answers become wiki pages.</p>
+</section>
+
+<!-- 05 BIFROST -->
+<section class="section" id="bifrost">
+  <div class="section-header">
+    <span class="section-num">05</span>
+    <span class="section-title">Bifrost — The Schema Layer</span>
+  </div>
+  <p>Git-backed public repository. The operating system for Sanctum — defines how agents behave, not what they know.</p>
+  <div class="code-block">
+    <div class="cb-header"><span class="cb-filename"><span>bifrost/</span></span><span class="cb-lang">structure</span></div>
+    <div class="cb-body">bifrost/
+  README.md · AGENTS.md · system-spec.md
+
+  <span class="k">contracts/</span>
+    skill-contract.md · memory-contract.md · prompt-contract.md
+    verification-contract.md · project-boundaries.md
+    <span class="v">design-pipeline-contract.md</span>   ← Phase 0 complete
+
+  <span class="k">skills/</span>
+    design/    curator · builder · validator · dialogue · harvester · distill
+    wiki/      ingest · query · lint
+    docs/      changelog · drift
+    react/     implement · test · review
+    typescript/ type · audit
+    express/   route · schema
+    github/    read-file · read-diff · create-branch · open-pr
+    memory/    write · summarize
+    architecture/ solid · ddd-review
+    security/  audit · auth-review
+
+  <span class="k">scripts/</span>
+    loop-back.sh · quality-gate.sh · skill-lint.sh</div>
+  </div>
+</section>
+
+<!-- 06 DOMAIN DEEPENING -->
+<section class="section" id="domain-deepening">
+  <div class="section-header">
+    <span class="section-num">06</span>
+    <span class="section-title">The Domain-Deepening Pattern</span>
+  </div>
+  <p>The system improves domain by domain. Each domain starts lightweight and earns depth through real use. This is the mechanism by which the system compounds in quality over time.</p>
+
+  <div class="principles" style="grid-template-columns:1fr;gap:8px;">
+    <div class="principle"><div class="principle-name">1 — Research</div><div class="principle-body">Find who has already solved this domain rigorously. Study their approach, vocabulary, and failure modes before writing anything. External research compresses months of trial and error into a structured starting point.</div></div>
+    <div class="principle"><div class="principle-name">2 — Model</div><div class="principle-body">Identify the conceptual vocabulary for this domain. Name things precisely. Names must fit the broader system register and be yours — not borrowed from external systems.</div></div>
+    <div class="principle"><div class="principle-name">3 — Validate</div><div class="principle-body">Run real work through lightweight specs. Observe what breaks specifically. The spec is written from evidence, not theory. Validation means real runs with observable, specific failures.</div></div>
+    <div class="principle highlight"><div class="principle-name">4 — Spec</div><div class="principle-body">Write the contract after validation. Not before. The design pipeline contract was written after four iterations of the builder and after understanding Ropau's system, Emil Kowalski's approach, and the Google spec format.</div></div>
+  </div>
+
+  <h3>What qualifies a domain</h3>
+  <p>Agent failures must be <strong>specific</strong>, <strong>recurring</strong>, and <strong>consequential</strong>. Generic dissatisfaction does not qualify. Specific observable patterns do.</p>
+
+  <table class="domain-table">
+    <thead><tr><th>Domain</th><th>Stage</th><th>Contract</th></tr></thead>
+    <tbody>
+      <tr><td>Design</td><td class="dt-done">Spec complete</td><td><code>design-pipeline-contract.md</code></td></tr>
+      <tr><td>Frontend (React/TSX)</td><td class="dt-pending">Lightweight SKILL.md</td><td>Pending first real failures</td></tr>
+      <tr><td>TypeScript</td><td class="dt-pending">Lightweight SKILL.md</td><td>Pending first real failures</td></tr>
+      <tr><td>Backend / Express</td><td class="dt-pending">Lightweight SKILL.md</td><td>Pending first real failures</td></tr>
+      <tr><td>Database</td><td class="dt-pending">Not started</td><td>Pending first real failures</td></tr>
+      <tr><td>Testing</td><td class="dt-pending">Not started</td><td>Pending first real failures</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 07 DESIGN PIPELINE -->
+<section class="section" id="design">
+  <div class="section-header">
+    <span class="section-num">07</span>
+    <span class="section-title">Design Pipeline</span>
+  </div>
+  <p>Governs how aesthetic intent travels from a client brief into deployed UI. First fully-specced domain. Full specification: <code>Bifrost/contracts/design-pipeline-contract.md</code>.</p>
+
+  <h3>Vocabulary</h3>
+  <div class="principles" style="grid-template-columns:1fr;gap:8px;">
+    <div class="principle"><div class="principle-name">Rune</div><div class="principle-body">A named, versioned design identity. Encodes visual DNA, motion system, routing governance, and annotated radar. Lives in <code>Sanctum/10 Knowledge/Design/runes/</code>. Reusable across projects sharing the same archetype profile.</div></div>
+    <div class="principle highlight"><div class="principle-name">Runestone</div><div class="principle-body">The browsable web interface rendering the Rune library as a live experience: type specimens, colour swatches, motion previews, radar visualisation, selection guide. Phase 1 deliverable. Built by the design pipeline — first dogfood project.</div></div>
+    <div class="principle"><div class="principle-name">Design Contract</div><div class="principle-body">Project-specific, agent-executable file instanced from a Rune. Lives at project root as <code>DESIGN_[PROJECT].md</code>. Google design.md spec compliant in YAML frontmatter. Self-standing — design/builder requires no other input.</div></div>
+  </div>
+
+  <h3>The eight axes</h3>
+  <table class="axes-table">
+    <thead><tr><th>Axis</th><th>Low pole</th><th>High pole</th></tr></thead>
+    <tbody>
+      <tr><td>Density</td><td>Airy</td><td>Dense</td></tr>
+      <tr><td>Temperature</td><td>Cold</td><td>Warm</td></tr>
+      <tr><td>Luminosity</td><td>Dark-first</td><td>Light-first</td></tr>
+      <tr><td>Energy</td><td>Static</td><td>Expressive</td></tr>
+      <tr><td>Geometry</td><td>Organic</td><td>Geometric</td></tr>
+      <tr><td>Chromatism</td><td>Monochrome</td><td>Polychrome</td></tr>
+      <tr><td>Depth</td><td>Flat</td><td>Layered</td></tr>
+      <tr><td>Posture</td><td>Utility</td><td>Experience</td></tr>
+    </tbody>
+  </table>
+  <p>Axis scores are directly executable CSS decisions. An agent reading <code>LUM 2</code> knows: dark-first backgrounds, <code>oklch(8%–14%)</code>. An agent reading <code>GEO 0</code> knows: <code>border-radius: 0</code> everywhere. Token format: OKLCH with two-letter namespace prefix (<code>--sb-</code> Signal Brut, <code>--nh-</code> Néon Humaniste, <code>--ae-</code> Argent Décisif, <code>--ee-</code> Encre Éditoriale).</p>
+
+  <h3>Current Rune library</h3>
+  <div class="rune-grid">
+    <div class="rune-card" style="background:var(--blue-d);border-color:var(--blue);">
+      <div class="rune-name">Press</div>
+      <div class="rune-archetypes">Creator + Outlaw · --pr-</div>
+      <div class="rune-radar">6-4-8-8-9-2-4-7</div>
+      <div class="rune-use">Typography as physical object. Orange structural nav, 2px borders, zero radius. The tool for people with a point of view. First real Rune in the system.</div>
+    </div>
+    <div class="rune-card" style="opacity:.45;">
+      <div class="rune-name" style="color:var(--dim);">Future Rune</div>
+      <div class="rune-archetypes" style="color:var(--dim);">TBD after first runs</div>
+      <div class="rune-radar" style="color:var(--dim);">— — — — — — — —</div>
+      <div class="rune-use">Earned through real project use. The library grows from evidence, not planning.</div>
+    </div>
+    <div class="rune-card" style="opacity:.45;border-bottom:none;">
+      <div class="rune-name" style="color:var(--dim);">Future Rune</div>
+      <div class="rune-archetypes" style="color:var(--dim);">TBD after first runs</div>
+      <div class="rune-radar" style="color:var(--dim);">— — — — — — — —</div>
+      <div class="rune-use">Earned through real project use. The library grows from evidence, not planning.</div>
+    </div>
+    <div class="rune-card" style="opacity:.45;border-bottom:none;border-right:none;">
+      <div class="rune-name" style="color:var(--dim);">Future Rune</div>
+      <div class="rune-archetypes" style="color:var(--dim);">TBD after first runs</div>
+      <div class="rune-radar" style="color:var(--dim);">— — — — — — — —</div>
+      <div class="rune-use">Earned through real project use. The library grows from evidence, not planning.</div>
+    </div>
+  </div>
+
+  <h3>Pipeline stages</h3>
+  <table class="status-table">
+    <thead><tr><th>Stage</th><th>Skill</th><th>Phase</th><th>Who</th><th>In → Out</th></tr></thead>
+    <tbody>
+      <tr><td>0 — Routing</td><td>—</td><td>0</td><td>Human</td><td>Brief → Selected Rune</td></tr>
+      <tr><td>1 — Instancing</td><td>design/curator</td><td>0</td><td>Agent</td><td>Brief + Rune → Design Contract</td></tr>
+      <tr><td>2 — Building</td><td>design/builder</td><td>0</td><td>Agent</td><td>Design Contract → HTML + Run Report</td></tr>
+      <tr><td>3 — Validation</td><td>design/validator</td><td>0</td><td>Agent</td><td>HTML + Contract → Validation report</td></tr>
+      <tr><td>4 — Dialogue</td><td>design/dialogue</td><td>1</td><td>Agent</td><td>Rune + question → Explanation</td></tr>
+      <tr><td>5 — Harvest</td><td>design/harvester</td><td>1</td><td>Agent</td><td>Run reports → Harvest report</td></tr>
+      <tr><td>6 — Distill</td><td>design/distill</td><td>2</td><td>Agent</td><td>Harvest report → Proposed Rune update</td></tr>
+    </tbody>
+  </table>
+  <p><strong>Routing is human.</strong> The routing guide in Sanctum has six questions. You answer them. You select the Rune. design/curator instances from your selection — it never selects independently.</p>
+</section>
+
+<!-- 08 AGENTS -->
+<section class="section" id="agents">
+  <div class="section-header">
+    <span class="section-num">08</span>
+    <span class="section-title">Agent Taxonomy</span>
+  </div>
+  <div class="principles">
+    <div class="principle"><div class="principle-name">Tier 1 — Actions</div><div class="principle-body">One domain. One verb. ≤10 files. Producers generate output. Validators report findings without modifying files. Validators never fix — they report.</div></div>
+    <div class="principle"><div class="principle-name">Tier 2 — Workflows</div><div class="principle-body">Multiple actions chained within a domain. Routine (background): react-feature, api-endpoint, wiki-maintain, design-run. Complex (foreground): ddd-bounded-context, bdd-cycle.</div></div>
+    <div class="principle"><div class="principle-name">Tier 3 — Projects</div><div class="principle-body">Multiple workflows across domains. Always foreground. Always human-initiated. full-stack-feature, wiki-build, runestone-build.</div></div>
+    <div class="principle highlight"><div class="principle-name">Tier 4 — Strategy</div><div class="principle-body">You. Full context. All routing decisions. The only tier that operates without a SKILL.md.</div></div>
+  </div>
+</section>
+
+<!-- 09 HARDWARE -->
+<section class="section" id="hardware">
+  <div class="section-header">
+    <span class="section-num">09</span>
+    <span class="section-title">Hardware Topology</span>
+  </div>
+  <table class="hw-table">
+    <thead><tr><th>Node</th><th>Role</th><th>Models</th></tr></thead>
+    <tbody>
+      <tr><td>MBP</td><td>Foreground: Claude Code, Ghostty/Tmux</td><td>Claude Sonnet / Opus</td></tr>
+      <tr><td>Mac mini M1 (16GB)</td><td>Background heavy: long runs, Ollama, GitHub CLI</td><td>GLM-4.7-Flash locally · Kimi K2.6 via API for complex tasks</td></tr>
+      <tr><td>Particle Tachyon (QCM6490, 8GB, Ubuntu 24.04, 5G)</td><td>Gateway + lightweight background: webhook listener, dispatch routing</td><td>Phi-3-mini · Qwen2.5-Coder:1.5b</td></tr>
+    </tbody>
+  </table>
+  <p>External control via SSH + tmux + Tailscale. Tachyon receives Slack commands and SSH-es into Mac mini. No OpenClaw — conflicts with human-orchestrator principle and cost model.</p>
+</section>
+
+<!-- 10 MODELS -->
+<section class="section" id="models">
+  <div class="section-header">
+    <span class="section-num">10</span>
+    <span class="section-title">Model Routing</span>
+  </div>
+  <table class="status-table">
+    <thead><tr><th>Task class</th><th>Model</th><th>Node</th></tr></thead>
+    <tbody>
+      <tr><td>Complex reasoning, architecture, design curation</td><td>Claude Opus (latest)</td><td>MBP</td></tr>
+      <tr><td>Standard feature work, code generation</td><td>Claude Sonnet (latest)</td><td>MBP</td></tr>
+      <tr><td>Background heavy: multi-file refactor, wiki ingest</td><td>GLM-4.7-Flash (local) or Kimi K2.6 (API)</td><td>Mac mini</td></tr>
+      <tr><td>Dispatch routing, lightweight classification</td><td>Phi-3-mini</td><td>Tachyon</td></tr>
+      <tr><td>Mechanical production: rename, format, stub</td><td>Qwen2.5-Coder:1.5b</td><td>Tachyon</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 11 INTERFACE -->
+<section class="section" id="interface">
+  <div class="section-header">
+    <span class="section-num">11</span>
+    <span class="section-title">Interface Layer</span>
+  </div>
+  <div class="principles">
+    <div class="principle"><div class="principle-name">Claude Code (primary)</div><div class="principle-body">Main foreground interface for complex work: architecture, design curation, code review, anything requiring judgment. Reads AGENTS.md and SKILL.md on startup.</div></div>
+    <div class="principle"><div class="principle-name">Slack (ambient dispatch)</div><div class="principle-body">Channel structure follows agent taxonomy. Dispatch routed through Tachyon. Results posted back as links.</div></div>
+    <div class="principle highlight"><div class="principle-name">Runestone (design)</div><div class="principle-body">localhost:3100 in development, deployed in Phase 1. Used before every new design project: navigate to /guide, answer six questions, select Rune, dispatch design/curator.</div></div>
+  </div>
+</section>
+
+<!-- 12 AGENTS MD -->
+<section class="section" id="agents-md">
+  <div class="section-header">
+    <span class="section-num">12</span>
+    <span class="section-title">AGENTS.md Contract</span>
+  </div>
+  <p>Every repository that agents operate in has an <code>AGENTS.md</code> at the root. Required sections: Identity · Authorised actions · Quality gate · Skill loading · Context boot · Feedback channel.</p>
+  <p><strong>The context boot principle:</strong> Agents do not arrive with context. <code>AGENTS.md</code> defines what to read first, in order. A well-written context boot means the agent begins already knowing the project architecture, quality standards, relevant skills, and current task context.</p>
+</section>
+
+<!-- 13 SKILL MD -->
+<section class="section" id="skill-md">
+  <div class="section-header">
+    <span class="section-num">13</span>
+    <span class="section-title">SKILL.md Contract</span>
+  </div>
+  <p>Every skill in Bifrost is a directory containing a single <code>SKILL.md</code>. Required frontmatter: name, version, type (producer/validator/workflow), domain, tier, triggers, reads_from, writes_to, model_preference.</p>
+  <p>Required body sections: When to use · What it does · What it does NOT do · Inputs · Output · Failure modes.</p>
+</section>
+
+<!-- 14 GITHUB -->
+<section class="section" id="github">
+  <div class="section-header">
+    <span class="section-num">14</span>
+    <span class="section-title">GitHub Skills</span>
+  </div>
+  <p><strong>Read skills (Phase 1):</strong> read-file · read-diff · read-history · read-pr. No side effects.</p>
+  <p><strong>Write skills (Phase 4):</strong> create-branch · commit-file · open-pr · comment-pr. All agent PRs open as draft. Loop-back must pass before any write skill runs.</p>
+</section>
+
+<!-- 15 QUALITY -->
+<section class="section" id="quality">
+  <div class="section-header">
+    <span class="section-num">15</span>
+    <span class="section-title">Quality Gate</span>
+  </div>
+  <p><code>Bifrost/scripts/quality-gate.sh</code> has two modes. <code>--llm-only</code> (fast, &lt;30s): LLM lint surface + TypeScript type check, structured JSON output. <code>--full</code>: format + lint + typecheck + tests + build + changeset. Runs on pre-push and CI.</p>
+  <p>The LLM lint surface (<code>eslint.llm.config.mjs</code>) promotes agent-relevant warnings to errors: missing return types, any assertions, unused variables, type-unsafe patterns.</p>
+</section>
+
+<!-- 16 LOOPBACK -->
+<section class="section" id="loopback">
+  <div class="section-header">
+    <span class="section-num">16</span>
+    <span class="section-title">Loop-back Gate</span>
+  </div>
+  <div class="code-block">
+    <div class="cb-body">Agent runs → quality-gate.sh --llm-only
+  Exit 0: output moves to Inbox for human review
+  Exit 1: structured feedback JSON → agent retry (max 3×)
+    After 3 failures: escalate to human with failure JSON</div>
+  </div>
+  <p><code>Bifrost/scripts/loop-back.sh</code> — ~50 lines. Built in Phase 2. Captures exit code and JSON from quality gate, formats feedback object, re-invokes agent with feedback prepended, tracks retry count.</p>
+</section>
+
+<!-- 17 PROMOTE -->
+<section class="section" id="promote">
+  <div class="section-header">
+    <span class="section-num">17</span>
+    <span class="section-title">Promote Gate + Self-Improvement</span>
+  </div>
+  <p>Nothing moves from <code>00 Inbox/</code> to durable wiki without human review. Agent writes to Inbox → human opens, reads, approves/rejects/edits → approved output moves to <code>10 Knowledge/</code> or <code>30 Memory/</code>.</p>
+  <p>Self-improvement loop: run output → harvester/linter → harvest report in Inbox → human review → approved findings → distill → proposed Rune/wiki/skill update in Inbox → human commits. <strong>The system never commits improvements to itself.</strong></p>
+</section>
+
+<!-- 18 LOOP -->
+<section class="section" id="loop">
+  <div class="section-header">
+    <span class="section-num">18</span>
+    <span class="section-title">The Core Operating Loop</span>
+  </div>
+  <p><strong>Wiki:</strong> ingest (source → pages + index + log) · query (question → answer + page) · lint (health check → Inbox report).</p>
+  <p><strong>Design:</strong> curator (brief + rune → Design Contract) · builder (contract → HTML + run report) · validator (HTML + contract → validation report) · harvester (run reports → harvest report).</p>
+  <p><strong>Heartbeat (Phase 5+):</strong> Cron on Tachyon. Every 6h: wiki/lint. Every 24h: docs/drift + index/rebuild. Weekly: stale-scanner. Produces digest to Inbox + Slack notification.</p>
+</section>
+
+<!-- 19 PHASES -->
+<section class="section" id="phases">
+  <div class="section-header">
+    <span class="section-num">19</span>
+    <span class="section-title">Phased Build Sequence</span>
+  </div>
+
+  <div class="phase">
+    <div class="phase-header">
+      <span class="phase-num">Phase 0</span>
+      <span class="phase-name">Foundation + Design Domain</span>
+      <span class="phase-status ps-ready">Ready to build</span>
+    </div>
+    <div class="phase-body">
+      <ul>
+        <li>Create sanctum/ and bifrost/ git repos, scaffold both structures</li>
+        <li>Create Sanctum/01 Indexes/log.md — empty but present from day one</li>
+        <li>Create all templates in Sanctum/99 Templates/ including rune.md</li>
+        <li>Symlink bifrost/skills/ → ~/.agents/skills/bifrost/</li>
+        <li>Install Ollama on Mac mini + Pi + manual dispatch proven</li>
+        <li>Write Press Rune file — `Sanctum/10 Knowledge/Design/runes/press.md`</li>
+        <li>Write routing-guide.md and design-principles.md in Sanctum</li>
+        <li>Write design/curator, design/builder, design/validator SKILL.md in Bifrost</li>
+        <li>Ingest design-pipeline-session-2026-04-22 summary into Sanctum 40 Sources/</li>
+      </ul>
+      <div class="phase-dogfood">design pipeline runs on the Runestone brief to produce its own Design Contract.</div>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="phase-header">
+      <span class="phase-num">Phase 1</span>
+      <span class="phase-name">Runestone + GitHub Read</span>
+      <span class="phase-status ps-pending">Not started</span>
+    </div>
+    <div class="phase-body">
+      <ul>
+        <li>Build Runestone v1 — first real design pipeline project run</li>
+        <li>Runestone deployed to production</li>
+        <li>design/dialogue and design/harvester SKILL.md written</li>
+        <li>First harvest report from Runestone build run</li>
+        <li>GitHub read skills: read-file · read-diff · read-history · read-pr</li>
+      </ul>
+      <div class="phase-dogfood">GitHub read skills committed to Bifrost. Agents can read the commit that added them.</div>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="phase-header">
+      <span class="phase-num">Phase 2</span>
+      <span class="phase-name">First Skill + Loop-back</span>
+      <span class="phase-status ps-pending">Not started</span>
+    </div>
+    <div class="phase-body">
+      <ul>
+        <li>docs/changelog SKILL.md — reads diff, writes changelog entry</li>
+        <li>docs/drift SKILL.md — checks code/docs alignment</li>
+        <li>Loop-back wrapper (Bifrost/scripts/loop-back.sh — ~50 lines)</li>
+        <li>design/distill SKILL.md written</li>
+      </ul>
+      <div class="phase-dogfood">docs/changelog writes its own changelog entry after being built. Loop-back runs on both. Distill runs on first Runestone harvest report.</div>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="phase-header">
+      <span class="phase-num">Phase 3</span>
+      <span class="phase-name">Wiki Core Loop</span>
+      <span class="phase-status ps-pending">Not started</span>
+    </div>
+    <div class="phase-body">
+      <ul>
+        <li>wiki/ingest, wiki/query, wiki/lint SKILL.md</li>
+        <li>Ingest system's own design documents as first real sources</li>
+        <li>Run first lint pass</li>
+      </ul>
+      <div class="phase-dogfood">wiki/ingest files the notes from its own creation session. The system begins compounding.</div>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="phase-header">
+      <span class="phase-num">Phase 4</span>
+      <span class="phase-name">GitHub Write Skills</span>
+      <span class="phase-status ps-pending">Not started</span>
+    </div>
+    <div class="phase-body">
+      <ul>
+        <li>github/create-branch, commit-file, open-pr (always draft) SKILL.md</li>
+      </ul>
+      <div class="phase-dogfood">docs/changelog opens first real PR — on the changelog for adding write skills.</div>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="phase-header">
+      <span class="phase-num">Phase 5</span>
+      <span class="phase-name">Slack + Tachyon</span>
+      <span class="phase-status ps-pending">Not started</span>
+    </div>
+    <div class="phase-body">
+      <ul>
+        <li>Tachyon: Ollama running (1–3B ARM models)</li>
+        <li>Tachyon: Pi installed and tested</li>
+        <li>Slack workspace — channel structure per agent taxonomy</li>
+        <li>Tachyon: webhook listener wired to Slack</li>
+        <li>Tachyon → Mac mini routing for heavy tasks</li>
+      </ul>
+      <div class="phase-dogfood">Dispatch docs/changelog from phone via Slack. Opens PR. Posts link back to Slack. First fully ambient loop.</div>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="phase-header">
+      <span class="phase-num">Phase 6</span>
+      <span class="phase-name">Self-Improvement Loop</span>
+      <span class="phase-status ps-pending">Not started</span>
+    </div>
+    <div class="phase-body">
+      <ul>
+        <li>memory/write skill (session-promoter)</li>
+        <li>github/comment-pr, request-review, mark-ready SKILL.md</li>
+        <li>index/rebuild skill</li>
+        <li>Backfill: all session summaries from Phases 0–5 ingested into Sanctum</li>
+        <li>Harness-feedback review workflow established</li>
+      </ul>
+      <div class="phase-dogfood">memory/write promotes its own build session into a memory note. System stores record of building itself.</div>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="phase-header">
+      <span class="phase-num">Phase 7</span>
+      <span class="phase-name">Full Workflow Chains</span>
+      <span class="phase-status ps-pending">Not started</span>
+    </div>
+    <div class="phase-body">
+      <ul>
+        <li>react-feature, api-endpoint, type-safety workflows</li>
+        <li>Model routing rules active — Mac mini vs Tachyon by task class</li>
+      </ul>
+      <div class="phase-dogfood">react-feature builds Runestone's interactive motion preview components.</div>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="phase-header">
+      <span class="phase-num">Phase 8</span>
+      <span class="phase-name">Webhook Triggers</span>
+      <span class="phase-status ps-pending">Not started</span>
+    </div>
+    <div class="phase-body">
+      <ul>
+        <li>on-ci-failure → dispatches bug-find on CI fail</li>
+        <li>on-pr-open → dispatches review workflow on PR open</li>
+        <li>on-push-main → dispatches changelog and drift on push to main</li>
+      </ul>
+      <div class="phase-dogfood">CI failure on system's own repo triggers a bug-find action. System debugs itself.</div>
+    </div>
+  </div>
+</section>
+
+<!-- 20 CONVENTIONS -->
+<section class="section" id="conventions">
+  <div class="section-header">
+    <span class="section-num">20</span>
+    <span class="section-title">Conventions</span>
+  </div>
+  <table class="conv-table">
+    <thead><tr><th>Convention</th><th>Format</th><th>Examples</th></tr></thead>
+    <tbody>
+      <tr><td>Skill IDs</td><td>domain/action kebab-case</td><td>design/curator · wiki/ingest · docs/changelog</td></tr>
+      <tr><td>Workflow IDs</td><td>domain-lifecycle</td><td>react-feature · design-run · wiki-maintain</td></tr>
+      <tr><td>Rune slugs</td><td>kebab-case</td><td>press · [future-rune]</td></tr>
+      <tr><td>Rune namespaces</td><td>two-letter prefix</td><td>--pr- (Press)</td></tr>
+      <tr><td>Token format</td><td>OKLCH + namespace</td><td>--pr-orange: oklch(57% 0.205 38)</td></tr>
+      <tr><td>Design Contract names</td><td>DESIGN_[PROJECT].md</td><td>DESIGN_RUNESTONE.md</td></tr>
+      <tr><td>Branch — human</td><td>feat/* · fix/* · chore/* · docs/*</td><td>feat/runestone-hero</td></tr>
+      <tr><td>Branch — agent</td><td>bg/* · skill/*</td><td>bg/runestone-sections · skill/design-curator</td></tr>
+      <tr><td>Tmux session names</td><td>[role]:[task-slug]</td><td>design-worker:runestone-build</td></tr>
+      <tr><td>Run reports</td><td>run-report-[date].md</td><td>run-report-2026-04-22.md</td></tr>
+      <tr><td>Log entries</td><td>## [YYYY-MM-DD] op | detail</td><td>## [2026-04-22] design/curator | press → DESIGN_RUNESTONE.md</td></tr>
+      <tr><td>Commit format</td><td>Conventional Commits</td><td>feat(design): add signal-brut rune file</td></tr>
+      <tr><td>Rune version</td><td>semver</td><td>1.0.0 · 1.1.0 · 2.0.0</td></tr>
+    </tbody>
+  </table>
+</section>
+
+</main>
+
+<script>
+// Active sidebar link on scroll
+const sections = document.querySelectorAll('.section');
+const links = document.querySelectorAll('.sb-link');
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const id = entry.target.id;
+      links.forEach(l => l.classList.remove('active'));
+      const active = document.querySelector(`.sb-link[href="#${id}"]`);
+      if (active) active.classList.add('active');
+    }
+  });
+}, { rootMargin: '-20% 0px -70% 0px' });
+
+sections.forEach(s => observer.observe(s));
+</script>
+
+</body>
+</html>

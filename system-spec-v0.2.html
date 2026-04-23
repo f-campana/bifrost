@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sanctum + Bifrost — System Specification v0.2</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+
+:root {
+  --bg:#0b0b0b; --surface:#111; --surface-2:#161616;
+  --border:#1e1e1e; --border-mid:#282828; --border-bright:#353535;
+  --text:#d0d0d0; --text-muted:#4e4e4e; --text-dim:#222;
+  --accent:#c8ff3e; --blue:#5ab4ff; --orange:#ff9555;
+  --purple:#c084fc; --teal:#2dd4bf; --red:#f87171; --green:#4ade80;
+  --amber:#fbbf24;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'IBM Plex Sans',sans-serif;font-size:13px;line-height:1.7;padding:0;}
+
+.wrapper{display:grid;grid-template-columns:220px 1fr;min-height:100vh;}
+
+nav{position:sticky;top:0;height:100vh;overflow-y:auto;background:var(--surface);border-right:1px solid var(--border-mid);padding:36px 0 48px;display:flex;flex-direction:column;}
+.nav-title{font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--text-muted);padding:0 20px 12px;border-bottom:1px solid var(--border);margin-bottom:6px;}
+.nav-ver{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--accent);padding:0 20px 14px;opacity:.7;}
+.nav-sec-label{font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--text-dim);padding:10px 20px 3px;display:block;}
+nav a{display:block;padding:3px 20px;font-size:10px;color:var(--text-muted);text-decoration:none;border-left:2px solid transparent;}
+nav a:hover{color:var(--text);border-left-color:var(--border-bright);}
+
+main{padding:52px 60px 100px;max-width:860px;}
+
+.doc-header{margin-bottom:48px;padding-bottom:24px;border-bottom:1px solid var(--border-mid);}
+.doc-title{font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:600;letter-spacing:.04em;color:var(--text);margin-bottom:6px;}
+.doc-subtitle{font-size:12px;color:var(--text-muted);margin-bottom:14px;}
+.doc-meta{display:flex;gap:16px;flex-wrap:wrap;}
+.dm{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--text-muted);}
+.dm span{color:#666;}
+
+/* Karpathy model callout */
+.karpathy-box{border:1px solid rgba(200,255,62,.25);border-radius:3px;padding:16px 18px;background:rgba(200,255,62,.03);margin:16px 0;display:flex;flex-direction:column;gap:8px;}
+.kb-title{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;}
+.kb-layers{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:4px;}
+.kb-layer{padding:10px 12px;border-radius:2px;border:1px solid;}
+.kbl-sources{background:rgba(90,180,255,.06);border-color:rgba(90,180,255,.2);}
+.kbl-wiki{background:rgba(192,132,252,.06);border-color:rgba(192,132,252,.2);}
+.kbl-schema{background:rgba(200,255,62,.05);border-color:rgba(200,255,62,.15);}
+.kbl-name{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;margin-bottom:3px;}
+.kbl-sources .kbl-name{color:var(--blue);}
+.kbl-wiki .kbl-name{color:var(--purple);}
+.kbl-schema .kbl-name{color:var(--accent);}
+.kbl-desc{font-size:9px;color:var(--text-muted);line-height:1.5;}
+.kbl-maps{font-family:'IBM Plex Mono',monospace;font-size:8px;margin-top:4px;}
+.kbl-sources .kbl-maps{color:rgba(90,180,255,.6);}
+.kbl-wiki .kbl-maps{color:rgba(192,132,252,.6);}
+.kbl-schema .kbl-maps{color:rgba(200,255,62,.5);}
+
+.spec-section{margin-bottom:48px;padding-top:4px;}
+.spec-h2{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;letter-spacing:.06em;color:var(--text);margin-bottom:18px;padding-bottom:10px;border-bottom:1px solid var(--border-mid);display:flex;align-items:center;gap:12px;}
+.spec-num{font-size:9px;color:var(--text-dim);letter-spacing:.1em;min-width:24px;}
+.spec-h3{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:#888;letter-spacing:.04em;margin:20px 0 8px;}
+p{margin-bottom:10px;color:#aaa;}
+
+code{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#888;background:var(--surface-2);border:1px solid var(--border);padding:1px 5px;border-radius:2px;}
+.code-block{font-family:'IBM Plex Mono',monospace;font-size:9px;color:#555;background:var(--surface);border:1px solid var(--border-mid);border-radius:3px;padding:12px 14px;line-height:1.8;margin:10px 0;overflow-x:auto;white-space:pre;}
+
+.tag{display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:600;padding:2px 6px;border-radius:2px;letter-spacing:.06em;}
+.t-built{color:var(--green);background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.22);}
+.t-partial{color:var(--amber);background:rgba(251,191,36,.07);border:1px solid rgba(251,191,36,.2);}
+.t-not{color:var(--red);background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.2);}
+
+/* Zone split */
+.zone-split{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0;}
+.zone{border:1px solid;border-radius:3px;overflow:hidden;}
+.zone-immutable{border-color:rgba(90,180,255,.3);}
+.zone-compiled{border-color:rgba(192,132,252,.3);}
+.zone-head{padding:9px 14px;border-bottom:1px solid var(--border);}
+.zone-immutable .zone-head{background:rgba(90,180,255,.05);}
+.zone-compiled .zone-head{background:rgba(192,132,252,.05);}
+.zone-name{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;margin-bottom:3px;}
+.zone-immutable .zone-name{color:var(--blue);}
+.zone-compiled .zone-name{color:var(--purple);}
+.zone-rule{font-size:9px;color:var(--text-muted);}
+.zone-body{padding:10px 14px;}
+.zone-item{font-family:'IBM Plex Mono',monospace;font-size:9px;color:#666;padding:2px 0;}
+
+/* Tier blocks */
+.tier-block{border:1px solid var(--border-mid);border-radius:3px;overflow:hidden;margin:10px 0;}
+.tier-head{padding:9px 14px;border-bottom:1px solid var(--border);background:var(--surface);display:flex;align-items:baseline;gap:10px;}
+.tier-name{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;}
+.tier-prop{font-size:9px;color:var(--text-muted);}
+.tier-body{padding:10px 14px;background:var(--bg);}
+.ta .tier-name{color:var(--accent);}
+.tw .tier-name{color:var(--blue);}
+.tp .tier-name{color:var(--orange);}
+.ts .tier-name{color:var(--purple);}
+
+/* Operating loop */
+.loop-ops{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0;}
+.loop-op{border:1px solid var(--border-mid);border-radius:3px;overflow:hidden;}
+.lo-head{padding:9px 13px;border-bottom:1px solid var(--border);background:var(--surface);}
+.lo-name{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;}
+.lo-ingest .lo-name{color:var(--teal);}
+.lo-query .lo-name{color:var(--blue);}
+.lo-lint .lo-name{color:var(--amber);}
+.lo-body{padding:10px 13px;display:flex;flex-direction:column;gap:4px;}
+.lo-step{font-size:9px;color:#666;line-height:1.5;padding-left:10px;position:relative;}
+.lo-step::before{content:'→';position:absolute;left:0;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--text-dim);}
+.lo-note{font-size:9px;color:var(--text-muted);font-style:italic;margin-top:4px;padding-top:6px;border-top:1px solid var(--border);}
+
+/* Phase table */
+.phase-grid{display:flex;flex-direction:column;gap:8px;margin:10px 0;}
+.phase-row{border:1px solid var(--border-mid);border-radius:3px;overflow:hidden;}
+.phase-head{display:flex;align-items:center;gap:10px;padding:9px 13px;background:var(--surface);border-bottom:1px solid var(--border);}
+.phase-num{font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:600;color:var(--text-dim);min-width:26px;}
+.phase-title{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;color:var(--text);}
+.phase-body{padding:10px 13px;background:var(--bg);}
+.phase-desc{font-size:9px;color:#666;line-height:1.6;margin-bottom:6px;}
+.phase-builds{display:flex;flex-wrap:wrap;gap:4px;}
+.pb{font-family:'IBM Plex Mono',monospace;font-size:8px;color:#555;padding:1px 6px;border-radius:2px;background:var(--surface);border:1px solid var(--border-mid);}
+.phase-dog{font-size:9px;color:rgba(200,255,62,.5);font-style:italic;margin-top:6px;}
+
+/* Tables */
+.spec-table{width:100%;border-collapse:collapse;border:1px solid var(--border-mid);border-radius:3px;overflow:hidden;margin:10px 0;font-size:9px;}
+.spec-table th{font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);background:var(--surface);padding:8px 12px;text-align:left;border-bottom:1px solid var(--border-mid);}
+.spec-table td{padding:7px 12px;border-bottom:1px solid var(--border);vertical-align:top;}
+.spec-table tr:last-child td{border-bottom:none;}
+.spec-table tr:nth-child(even) td{background:var(--surface);}
+.tid{font-family:'IBM Plex Mono',monospace;font-size:9px;color:#777;}
+.tdesc{color:#666;line-height:1.5;}
+.v-row .tid{color:var(--red);}
+
+/* Definition grid */
+.def-grid{display:flex;flex-direction:column;gap:1px;background:var(--border-mid);border:1px solid var(--border-mid);border-radius:3px;overflow:hidden;margin:10px 0;}
+.def-row{display:grid;grid-template-columns:160px 1fr;background:var(--bg);}
+.def-row.alt{background:var(--surface);}
+.def-key{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;color:var(--text-muted);padding:8px 12px;border-right:1px solid var(--border-mid);display:flex;align-items:flex-start;}
+.def-val{padding:8px 12px;font-size:9px;color:#777;line-height:1.6;}
+
+/* Gate flow */
+.gate-flow{display:flex;flex-direction:column;gap:0;border:1px solid var(--border-mid);border-radius:3px;overflow:hidden;margin:10px 0;}
+.gf-step{display:grid;grid-template-columns:110px 1fr;border-bottom:1px solid var(--border);}
+.gf-step:last-child{border-bottom:none;}
+.gf-actor{padding:10px 13px;background:var(--surface);border-right:1px solid var(--border-mid);font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;display:flex;align-items:flex-start;}
+.gf-agent{color:var(--teal);}
+.gf-gate{color:var(--accent);}
+.gf-you{color:var(--orange);}
+.gf-ci{color:var(--blue);}
+.gf-body{padding:10px 13px;font-size:9px;color:#666;line-height:1.6;}
+
+hr{border:none;border-top:1px solid var(--border-mid);margin:28px 0;}
+
+.bifrost-schema-note{border-left:3px solid var(--accent);padding:10px 14px;background:rgba(200,255,62,.03);margin:14px 0;font-size:10px;color:#888;line-height:1.7;}
+.bifrost-schema-note strong{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--accent);}
+
+.node-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:10px 0;}
+.node-card{border:1px solid var(--border-mid);border-radius:3px;overflow:hidden;}
+.nc-mbp{border-color:rgba(255,149,85,.3);}
+.nc-mini{border-color:rgba(45,212,191,.28);}
+.nc-tach{border-color:rgba(192,132,252,.28);}
+.nc-head{padding:10px 13px;border-bottom:1px solid var(--border);}
+.nc-mbp .nc-head{background:rgba(255,149,85,.04);}
+.nc-mini .nc-head{background:rgba(45,212,191,.04);}
+.nc-tach .nc-head{background:rgba(192,132,252,.04);}
+.nc-name{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;margin-bottom:2px;}
+.nc-mbp .nc-name{color:var(--orange);}
+.nc-mini .nc-name{color:var(--teal);}
+.nc-tach .nc-name{color:var(--purple);}
+.nc-spec{font-size:8px;color:var(--text-muted);line-height:1.5;}
+.nc-body{padding:10px 13px;display:flex;flex-direction:column;gap:5px;}
+.nc-label{font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);}
+.nc-items{display:flex;flex-wrap:wrap;gap:3px;margin-top:2px;}
+.nc-item{font-family:'IBM Plex Mono',monospace;font-size:8px;color:#666;padding:1px 5px;border-radius:2px;background:var(--surface-2);border:1px solid var(--border);}
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+<nav>
+  <div class="nav-title">System Specification</div>
+  <div class="nav-ver">v0.2 — Sanctum + Bifrost</div>
+  <div class="nav-sec-label">Foundation</div>
+  <a href="#overview">1. Overview</a>
+  <a href="#principles">2. Core Principles</a>
+  <a href="#status">3. Build Status</a>
+  <div class="nav-sec-label">Architecture</div>
+  <a href="#sanctum">4. Sanctum — Wiki</a>
+  <a href="#bifrost">5. Bifrost — Schema</a>
+  <a href="#taxonomy">6. Agent Taxonomy</a>
+  <a href="#hardware">7. Hardware</a>
+  <a href="#routing">8. Model Routing</a>
+  <a href="#interface">9. Interface Layer</a>
+  <div class="nav-sec-label">Contracts</div>
+  <a href="#agents-md">10. AGENTS.md</a>
+  <a href="#skill-md">11. SKILL.md</a>
+  <a href="#gh-skills">12. GitHub Skills</a>
+  <a href="#gate">13. Quality Gate</a>
+  <a href="#loopback">14. Loop-back</a>
+  <a href="#promote">15. Promote Gate</a>
+  <a href="#core-loop">16. Core Loop</a>
+  <div class="nav-sec-label">Build</div>
+  <a href="#sequence">17. Phase Sequence</a>
+  <a href="#conventions">18. Conventions</a>
+  <a href="#existing">19. Existing Infra</a>
+</nav>
+
+<main>
+
+<div class="doc-header">
+  <div class="doc-title">Sanctum + Bifrost</div>
+  <div class="doc-subtitle">Hybrid Human-Orchestrated Agent System</div>
+  <div class="doc-meta">
+    <div class="dm">version <span>0.2</span></div>
+    <div class="dm">status <span>design complete — ready to build</span></div>
+    <div class="dm">sanctum <span>private repo</span></div>
+    <div class="dm">bifrost <span>public repo</span></div>
+    <div class="dm">updated <span>2026-04-20</span></div>
+  </div>
+</div>
+
+<!-- 1. OVERVIEW -->
+<div class="spec-section" id="overview">
+  <div class="spec-h2"><span class="spec-num">01</span>Overview</div>
+
+  <p><strong style="color:var(--purple)">Sanctum</strong> is the compiled knowledge wiki. It owns everything the system knows — raw sources, synthesis, memory, indexes, project context. Knowledge compounds here over time.</p>
+  <p><strong style="color:var(--accent)">Bifrost</strong> is the schema and operating system that maintains the wiki. It owns skills, contracts, routing rules, verification logic, and prompt assembly rules. It tells agents how to operate.</p>
+  <p>Projects consume both. The orchestrator is a human. Automation is earned, not assumed.</p>
+
+  <div class="bifrost-schema-note">
+    <strong>Bifrost is not the knowledge base. It is the operating system for the knowledge base.</strong><br>
+    When in doubt: does it define how the wiki is maintained? → Bifrost. Does it contain wiki content? → Sanctum.
+  </div>
+
+  <div class="spec-h3">The Karpathy Model</div>
+  <p>This system is a direct implementation of Karpathy's LLM Wiki pattern, generalised into a broader agent OS.</p>
+  <div class="karpathy-box">
+    <div class="kb-title">Three-layer architecture</div>
+    <div class="kb-layers">
+      <div class="kb-layer kbl-sources">
+        <div class="kbl-name">Raw Sources</div>
+        <div class="kbl-desc">Immutable inputs. LLM reads, never modifies. Provenance preserved permanently.</div>
+        <div class="kbl-maps">→ Sanctum 40 Sources/</div>
+      </div>
+      <div class="kb-layer kbl-wiki">
+        <div class="kbl-name">Compiled Wiki</div>
+        <div class="kbl-desc">LLM-maintained synthesis. Compounds over time. Good answers become wiki pages.</div>
+        <div class="kbl-maps">→ Sanctum 10 Knowledge/ + 01 Indexes/ + 30 Memory/</div>
+      </div>
+      <div class="kb-layer kbl-schema">
+        <div class="kbl-name">Schema</div>
+        <div class="kbl-desc">Operating instructions. Defines ingest, query, lint. Skills, contracts, routing.</div>
+        <div class="kbl-maps">→ Bifrost</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 2. CORE PRINCIPLES -->
+<div class="spec-section" id="principles">
+  <div class="spec-h2"><span class="spec-num">02</span>Core Principles</div>
+  <div class="def-grid">
+    <div class="def-row"><div class="def-key">Human orchestrator</div><div class="def-val">The human makes all routing, decomposition, and promote gate decisions. No agent decides which agent runs next. Automation is for execution, not orchestration.</div></div>
+    <div class="def-row alt"><div class="def-key">Sources are immutable</div><div class="def-val">Raw source material in <code>40 Sources/</code> is never modified by agents. LLM reads from it but writes only to the compiled wiki zone. Provenance must be traceable.</div></div>
+    <div class="def-row"><div class="def-key">The wiki compounds</div><div class="def-val">Every useful synthesis — an answer, an analysis, a discovered connection — gets filed back into the wiki. Nothing valuable disappears into chat history. The system gets smarter with every interaction.</div></div>
+    <div class="def-row alt"><div class="def-key">Bifrost is the schema</div><div class="def-val">Bifrost defines how the wiki is maintained. Sanctum contains what the wiki knows. Different concerns that must never blur.</div></div>
+    <div class="def-row"><div class="def-key">Harness agnosticism</div><div class="def-val">AGENTS.md and SKILL.md are the harness contract. Pi, Claude Code, and Codex all read them. Skills discovered via <code>~/.agents/skills/</code> standard global path.</div></div>
+    <div class="def-row alt"><div class="def-key">Pull before push</div><div class="def-val">Every automated trigger starts as manual dispatch. ≥2 weeks predictable manual use before any automation. Automation is a reward for proven reliability.</div></div>
+    <div class="def-row"><div class="def-key">Dogfood the build</div><div class="def-val">Each phase uses what was built before. docs/changelog writes its own changelog. wiki/ingest files the notes from its own creation session.</div></div>
+    <div class="def-row alt"><div class="def-key">Promote gate</div><div class="def-val">Nothing moves from agent output to durable wiki without human review. Background agents write to <code>00 Inbox/</code> only.</div></div>
+    <div class="def-row"><div class="def-key">Narrow context</div><div class="def-val">Action agents: ≤10 files. Workflow agents: one domain map. Project agents: cross-domain maps. Strategy (you): full context. Loading more than needed causes scope creep.</div></div>
+  </div>
+</div>
+
+<!-- 3. BUILD STATUS -->
+<div class="spec-section" id="status">
+  <div class="spec-h2"><span class="spec-num">03</span>Build Status</div>
+  <table class="spec-table">
+    <thead><tr><th>Capability</th><th>Status</th><th>Location / Note</th></tr></thead>
+    <tbody>
+      <tr><td class="tid">Root AGENTS.md (FODMAPP)</td><td><span class="tag t-built">built</span></td><td class="tdesc">Full domain contract. Template for all project AGENTS.md files.</td></tr>
+      <tr><td class="tid">LLM lint surface</td><td><span class="tag t-built">built</span></td><td class="tdesc">eslint.llm.config.mjs — warnings as errors for agent code.</td></tr>
+      <tr><td class="tid">CLI quality gate</td><td><span class="tag t-built">built</span></td><td class="tdesc">.github/scripts/quality-gate.sh — fast and --full modes.</td></tr>
+      <tr><td class="tid">Pre-push enforcement</td><td><span class="tag t-built">built</span></td><td class="tdesc">.githooks/pre-push — runs --full on every git push.</td></tr>
+      <tr><td class="tid">Agent branch identity</td><td><span class="tag t-built">built</span></td><td class="tdesc">codex/* prefix in CONTRIBUTING.md.</td></tr>
+      <tr><td class="tid">FODMAPP skills (Turborepo × 3)</td><td><span class="tag t-built">built</span></td><td class="tdesc">Prior art for SKILL.md format.</td></tr>
+      <tr><td class="tid">Sanctum repo + structure</td><td><span class="tag t-not">Phase 0</span></td><td class="tdesc">Does not exist yet.</td></tr>
+      <tr><td class="tid">Bifrost repo + structure</td><td><span class="tag t-not">Phase 0</span></td><td class="tdesc">Does not exist yet.</td></tr>
+      <tr><td class="tid">Sanctum log.md</td><td><span class="tag t-not">Phase 0</span></td><td class="tdesc">First-class append-only operation log.</td></tr>
+      <tr><td class="tid">Loop-back wrapper</td><td><span class="tag t-not">Phase 2</span></td><td class="tdesc">~50 lines. Feeds gate failure JSON back to agent.</td></tr>
+      <tr><td class="tid">docs/changelog skill</td><td><span class="tag t-not">Phase 2</span></td><td class="tdesc">First skill. Proves the quality loop.</td></tr>
+      <tr><td class="tid">wiki/ingest skill</td><td><span class="tag t-not">Phase 3</span></td><td class="tdesc">Proves the compounding loop.</td></tr>
+      <tr><td class="tid">wiki/query + wiki/lint</td><td><span class="tag t-not">Phase 3</span></td><td class="tdesc">Completes the core operating loop.</td></tr>
+      <tr><td class="tid">GitHub read skills</td><td><span class="tag t-partial">partial</span></td><td class="tdesc">gh CLI present, not yet SKILL.md.</td></tr>
+      <tr><td class="tid">GitHub write skills</td><td><span class="tag t-not">Phase 4</span></td><td class="tdesc">branch, commit, open-pr as SKILL.md.</td></tr>
+      <tr><td class="tid">Slack + Tachyon gateway</td><td><span class="tag t-not">Phase 5</span></td><td class="tdesc">Ambient dispatch layer.</td></tr>
+      <tr><td class="tid">Ollama on Mac mini</td><td><span class="tag t-not">Phase 0</span></td><td class="tdesc">Prerequisite for background tier.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- 4. SANCTUM -->
+<div class="spec-section" id="sanctum">
+  <div class="spec-h2"><span class="spec-num">04</span>Sanctum — The Compiled Wiki</div>
+
+  <div class="zone-split">
+    <div class="zone zone-immutable">
+      <div class="zone-head">
+        <div class="zone-name">Immutable Zone</div>
+        <div class="zone-rule">LLM reads, never writes. Provenance preserved.</div>
+      </div>
+      <div class="zone-body">
+        <div class="zone-item">40 Sources/</div>
+        <div class="zone-item" style="color:#333;font-size:8px;padding-top:4px;">Notes Imports · Web Clips · Papers · Transcripts · Repos</div>
+      </div>
+    </div>
+    <div class="zone zone-compiled">
+      <div class="zone-head">
+        <div class="zone-name">Compiled Zone</div>
+        <div class="zone-rule">LLM owns. Creates, updates, cross-references. Promote gate applies.</div>
+      </div>
+      <div class="zone-body">
+        <div class="zone-item">00 Inbox/ · 01 Indexes/ · 10 Knowledge/</div>
+        <div class="zone-item">20 Projects/ · 30 Memory/ · 99 Templates/</div>
+        <div class="zone-item" style="color:#333;font-size:8px;padding-top:4px;">Good answers become wiki pages here. No permanent Outputs/ — transient content lands in 00 Inbox/ then is promoted or discarded.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="spec-h3">Folder structure</div>
+  <div class="code-block">sanctum/
+  README.md · AGENTS.md · system-spec.md
+
+  00 Inbox/
+    harness-feedback.md        ← agents append AGENTS.md improvement suggestions
+
+  01 Indexes/
+    index.md                   ← master navigation entry point
+    log.md                     ← append-only: ## [YYYY-MM-DD] op | detail
+    knowledge-map.md · memory-map.md · projects-map.md
+
+  10 Knowledge/
+    Articles/ · Concepts/ · Lessons/ · Exercises/
+
+  20 Projects/
+    _project-template.md · project-index.md
+
+  30 Memory/
+    Environment/ · Preferences/ · Project Memory/
+
+  40 Sources/                  ← IMMUTABLE
+    Notes Imports/ · Web Clips/ · Repos/ · Papers/ · Transcripts/
+
+  60 Assets/
+    Images/ · Diagrams/
+
+  90 Archive/
+
+  99 Templates/
+    concept-note.md · lesson-note.md · memory-note.md
+    project-note.md · source-note.md · session-summary.md · research-note.md</div>
+
+  <p style="margin-top:8px;font-size:9px;color:var(--text-muted);">Note: <code>50 Outputs/</code> is intentionally absent. Per Karpathy — good answers become wiki pages. Transient outputs land in <code>00 Inbox/</code> and are promoted to <code>10 Knowledge/</code> or discarded. No permanent intermediate layer.</p>
+</div>
+
+<!-- 5. BIFROST -->
+<div class="spec-section" id="bifrost">
+  <div class="spec-h2"><span class="spec-num">05</span>Bifrost — The Schema Layer</div>
+
+  <p>Bifrost is a public repository. It defines how agents maintain Sanctum and execute tasks. Skills are discovered via <code>~/.agents/skills/bifrost/</code> — symlinked from <code>bifrost/skills/</code>. No custom registry needed; native harness discovery handles it.</p>
+
+  <div class="spec-h3">Folder structure</div>
+  <div class="code-block">bifrost/
+  README.md · AGENTS.md · system-spec.md
+
+  skills/
+    _index.md · _template/SKILL.md
+    wiki/
+      wiki-ingest/ · wiki-query/ · wiki-lint/
+    docs/
+      docs-changelog/ · docs-write/ · docs-drift/ · docs-adr/
+    react/
+      react-implement/ · react-test/ · react-review/
+      react-bug-find/ · react-perf-audit/
+    typescript/
+      ts-type/ · ts-audit/
+    express/
+      express-route/ · express-schema/
+    github/
+      gh-read-file/ · gh-read-diff/ · gh-create-branch/
+      gh-open-pr/ · gh-comment-pr/
+    memory/
+      memory-write/ · memory-summarize/
+    architecture/
+      arch-solid/ · arch-ddd-review/
+    security/
+      sec-audit/ · sec-auth-review/
+
+  contracts/
+    skill-contract.md · memory-contract.md
+    prompt-contract.md · verification-contract.md
+    project-boundaries.md
+
+  scripts/
+    loop-back.sh · quality-gate.sh · skill-lint.sh
+
+  examples/
+    skill-example.md · agent-flow-example.md</div>
+
+  <p style="margin-top:8px;font-size:9px;color:var(--text-muted);">Skills are domain-first, not mechanism-first. <code>react/implement</code> not <code>browser/automate</code>. A React review agent thinks "I need react/review," not "I need browser/verify." Harness capabilities (browser automation, terminal inspection) are internal implementation, not top-level skill families.</p>
+</div>
+
+<!-- 6. TAXONOMY -->
+<div class="spec-section" id="taxonomy">
+  <div class="spec-h2"><span class="spec-num">06</span>Agent Taxonomy</div>
+
+  <div class="tier-block ta">
+    <div class="tier-head"><div class="tier-name">Actions</div><div class="tier-prop">One domain × one verb · ≤10 files · deterministic · background tier · producer/validator split</div></div>
+    <div class="tier-body">
+      <p style="font-size:9px;color:#666;margin-bottom:8px;">Producers generate artifacts. Validators inspect artifacts. Strict separation — producers never validate, validators never fix.</p>
+      <table class="spec-table">
+        <thead><tr><th>Producer</th><th>Input</th><th>Output</th><th>Validator</th><th>Output</th></tr></thead>
+        <tbody>
+          <tr><td class="tid">react/implement</td><td class="tdesc">component spec</td><td class="tdesc">component file(s)</td><td class="tid v-row">react/review</td><td class="tdesc">review report → Inbox</td></tr>
+          <tr><td class="tid">react/test</td><td class="tdesc">component file</td><td class="tdesc">test suite</td><td class="tid v-row">react/perf-audit</td><td class="tdesc">perf report → Inbox</td></tr>
+          <tr><td class="tid">docs/changelog</td><td class="tdesc">git diff</td><td class="tdesc">changelog entry</td><td class="tid v-row">docs/drift</td><td class="tdesc">drift report → Inbox</td></tr>
+          <tr><td class="tid">docs/write</td><td class="tdesc">code or spec</td><td class="tdesc">docs file</td><td class="tid v-row">ts/audit</td><td class="tdesc">type safety → Inbox</td></tr>
+          <tr><td class="tid">wiki/ingest</td><td class="tdesc">source file</td><td class="tdesc">wiki pages + log</td><td class="tid v-row">arch/solid</td><td class="tdesc">SOLID audit → Inbox</td></tr>
+          <tr><td class="tid">wiki/query</td><td class="tdesc">question</td><td class="tdesc">answer + wiki page</td><td class="tid v-row">sec/audit</td><td class="tdesc">vuln report → Inbox</td></tr>
+          <tr><td class="tid">wiki/lint</td><td class="tdesc">wiki state</td><td class="tdesc">health report</td><td class="tid v-row">rag/quality</td><td class="tdesc">recall report → Inbox</td></tr>
+          <tr><td class="tid">memory/write</td><td class="tdesc">session summary</td><td class="tdesc">memory PR → Inbox</td><td class="tid v-row">arch/ddd-review</td><td class="tdesc">DDD audit → Inbox</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="tier-block tw">
+    <div class="tier-head"><div class="tier-name">Workflows</div><div class="tier-prop">Single domain · full lifecycle · chains actions · bg (routine) or fg (complex)</div></div>
+    <div class="tier-body">
+      <table class="spec-table">
+        <thead><tr><th>ID</th><th>Chain (validators ⟨⟩)</th><th>Tier</th></tr></thead>
+        <tbody>
+          <tr><td class="tid">react-feature</td><td class="tdesc">implement → test → story → ⟨review⟩ → ⟨perf-audit⟩ → docs/write</td><td class="tdesc">bg routine</td></tr>
+          <tr><td class="tid">api-endpoint</td><td class="tdesc">route → schema → ⟨auth-review⟩ → ⟨sec/injection⟩ → docs/write</td><td class="tdesc">bg routine</td></tr>
+          <tr><td class="tid">wiki-maintain</td><td class="tdesc">ingest → ⟨lint⟩ → index/rebuild</td><td class="tdesc">bg routine</td></tr>
+          <tr><td class="tid">type-safety</td><td class="tdesc">ts/type → ts/narrow → ⟨ts/audit⟩</td><td class="tdesc">bg routine</td></tr>
+          <tr><td class="tid">ddd-bounded-context</td><td class="tdesc">docs/adr → schema → ⟨arch/ddd-review⟩ → ⟨arch/solid⟩</td><td class="tdesc">fg complex</td></tr>
+          <tr><td class="tid">bdd-cycle</td><td class="tdesc">docs/write(spec) → react/test(stubs) → react/implement → ⟨react/review⟩</td><td class="tdesc">fg complex</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="tier-block tp">
+    <div class="tier-head"><div class="tier-name">Projects</div><div class="tier-prop">Multiple domains · single goal · coordinates workflows · foreground tier</div></div>
+    <div class="tier-body">
+      <table class="spec-table">
+        <thead><tr><th>ID</th><th>Workflows</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td class="tid">full-stack-feature</td><td class="tdesc">react-feature + api-endpoint + type-safety</td><td class="tdesc">+ sec/audit + docs/changelog on completion</td></tr>
+          <tr><td class="tid">wiki-build</td><td class="tdesc">wiki-maintain × N sources</td><td class="tdesc">Systematic wiki construction from a source corpus</td></tr>
+          <tr><td class="tid">event-sourced-module</td><td class="tdesc">ddd-bounded-context + api-endpoint</td><td class="tdesc">arch/event-review injected at project level</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="tier-block ts">
+    <div class="tier-head"><div class="tier-name">Strategy</div><div class="tier-prop">Product / roadmap scope · full context · you are the primary agent</div></div>
+    <div class="tier-body">
+      <p style="font-size:9px;color:#666;">Architecture decisions, product ideation, codebase evolution plans, system audits. Automated Strategy agents require your explicit approval before any downstream action.</p>
+    </div>
+  </div>
+</div>
+
+<!-- 7. HARDWARE -->
+<div class="spec-section" id="hardware">
+  <div class="spec-h2"><span class="spec-num">07</span>Hardware Topology</div>
+  <div class="node-grid">
+    <div class="node-card nc-mbp">
+      <div class="nc-head"><div class="nc-name">MacBook Pro</div><div class="nc-spec">Foreground tier</div></div>
+      <div class="nc-body">
+        <div class="nc-label">Tools</div><div class="nc-items"><span class="nc-item">Claude Code</span><span class="nc-item">Codex App</span><span class="nc-item">Ghostty</span><span class="nc-item">Tmux</span></div>
+        <div class="nc-label" style="margin-top:5px;">Tiers</div><div class="nc-items"><span class="nc-item">Strategy</span><span class="nc-item">Projects</span><span class="nc-item">Complex WF</span></div>
+      </div>
+    </div>
+    <div class="node-card nc-mini">
+      <div class="nc-head"><div class="nc-name">Mac mini M1</div><div class="nc-spec">Background — heavy workers</div></div>
+      <div class="nc-body">
+        <div class="nc-label">Tools</div><div class="nc-items"><span class="nc-item">Pi workers</span><span class="nc-item">Ollama</span><span class="nc-item">GitHub CLI</span></div>
+        <div class="nc-label" style="margin-top:5px;">Models</div><div class="nc-items"><span class="nc-item">Qwen2.5-32B</span><span class="nc-item">Mistral-Small</span></div>
+        <div class="nc-label" style="margin-top:5px;">Tiers</div><div class="nc-items"><span class="nc-item">Routine WF</span><span class="nc-item">Heavy Validators</span></div>
+      </div>
+    </div>
+    <div class="node-card nc-tach">
+      <div class="nc-head"><div class="nc-name">Particle Tachyon</div><div class="nc-spec">Gateway + lightweight workers</div></div>
+      <div class="nc-body">
+        <div class="nc-label">Tools</div><div class="nc-items"><span class="nc-item">Pi workers</span><span class="nc-item">Slack webhook</span><span class="nc-item">Ollama ARM</span></div>
+        <div class="nc-label" style="margin-top:5px;">Connectivity</div><div class="nc-items"><span class="nc-item" style="color:var(--purple);border-color:rgba(192,132,252,.25)">5G EtherSIM</span><span class="nc-item">WiFi 6E</span></div>
+        <div class="nc-label" style="margin-top:5px;">Tiers</div><div class="nc-items"><span class="nc-item">Dispatch router</span><span class="nc-item">Lightweight Actions</span></div>
+      </div>
+    </div>
+  </div>
+  <p style="font-size:9px;color:var(--text-muted);margin-top:8px;">The Tachyon is the always-on gateway. Its 5G independence is what makes the system ambient — reachable from anywhere regardless of local network state.</p>
+</div>
+
+<!-- 16. CORE LOOP -->
+<div class="spec-section" id="core-loop">
+  <div class="spec-h2"><span class="spec-num">16</span>The Core Operating Loop</div>
+  <p>Ingest, query, and lint are the heartbeat of Sanctum. All three are Bifrost skills. All three write to Sanctum.</p>
+
+  <div class="loop-ops">
+    <div class="loop-op lo-ingest">
+      <div class="lo-head"><div class="lo-name">wiki/ingest</div></div>
+      <div class="lo-body">
+        <div class="lo-step">Read the source document</div>
+        <div class="lo-step">Write summary page to 10 Knowledge/</div>
+        <div class="lo-step">Update 01 Indexes/index.md</div>
+        <div class="lo-step">Update relevant concept + entity pages</div>
+        <div class="lo-step">Append entry to 01 Indexes/log.md</div>
+        <div class="lo-step">Open draft PR for review</div>
+        <div class="lo-note">One source may touch 10–15 wiki pages. This is the compounding operation.</div>
+      </div>
+    </div>
+    <div class="loop-op lo-query">
+      <div class="lo-head"><div class="lo-name">wiki/query</div></div>
+      <div class="lo-body">
+        <div class="lo-step">Read index.md to find relevant pages</div>
+        <div class="lo-step">Load the most relevant pages</div>
+        <div class="lo-step">Synthesise answer with citations</div>
+        <div class="lo-step">If answer is valuable: file as new wiki page</div>
+        <div class="lo-step">Append entry to log.md</div>
+        <div class="lo-note">Good answers become wiki pages. The wiki gets richer with every question asked.</div>
+      </div>
+    </div>
+    <div class="loop-op lo-lint">
+      <div class="lo-head"><div class="lo-name">wiki/lint</div></div>
+      <div class="lo-body">
+        <div class="lo-step">Scan for contradictions between pages</div>
+        <div class="lo-step">Find stale claims newer sources superseded</div>
+        <div class="lo-step">Identify orphan pages with no inbound links</div>
+        <div class="lo-step">Flag concepts lacking their own page</div>
+        <div class="lo-step">Write findings to 00 Inbox/</div>
+        <div class="lo-note">Run periodically. Lint is what keeps the wiki healthy as it grows.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 14. LOOP-BACK -->
+<div class="spec-section" id="loopback">
+  <div class="spec-h2"><span class="spec-num">14</span>Loop-back Gate</div>
+  <p>~50 lines of shell or Node.js. Everything needed already exists in FODMAPP. The wrapper is the missing connective tissue.</p>
+
+  <div class="gate-flow">
+    <div class="gf-step"><span class="gf-actor gf-agent">agent</span><div class="gf-body">Produces files. Commits to <code>bg/*</code> or <code>codex/*</code> branch. Does not push or open a PR yet.</div></div>
+    <div class="gf-step"><span class="gf-actor gf-gate">gate</span><div class="gf-body">Loop-back runs <code>quality-gate.sh --llm-only</code>. Captures exit code + ESLint JSON.<br>→ Exit 0: proceed to PR. → Non-zero: build feedback object, re-invoke agent (max 3×).<br>→ On exhaustion: write failure log to <code>Sanctum/00 Inbox/</code> + Slack notification.</div></div>
+    <div class="gf-step"><span class="gf-actor gf-gate">gate</span><div class="gf-body">Exit 0 confirmed. Loop-back invokes <code>github/open-pr</code> as draft. Branch pushed. PR description includes gate iteration count.</div></div>
+    <div class="gf-step"><span class="gf-actor gf-ci">CI</span><div class="gf-body"><code>quality-gate.sh --full</code> on PR open. <code>lint:llm:ci</code> as hard failure. Source of truth.</div></div>
+    <div class="gf-step"><span class="gf-actor gf-you">you</span><div class="gf-body">Judgment gate. Deterministic checks already passed. Review for correctness, architectural fit, intent match.</div></div>
+  </div>
+</div>
+
+<!-- 17. PHASE SEQUENCE -->
+<div class="spec-section" id="sequence">
+  <div class="spec-h2"><span class="spec-num">17</span>Phased Build Sequence</div>
+
+  <div class="phase-grid">
+    <div class="phase-row">
+      <div class="phase-head"><div class="phase-num">0</div><div class="phase-title">Substrate</div><span class="tag t-not" style="margin-left:auto">not yet</span></div>
+      <div class="phase-body">
+        <div class="phase-desc">Create the repos. Scaffold the structures. Prove the manual loop closes once.</div>
+        <div class="phase-builds"><span class="pb">sanctum/ git repo (private)</span><span class="pb">bifrost/ git repo (public)</span><span class="pb">scaffold both structures</span><span class="pb">Sanctum log.md (empty)</span><span class="pb">99 Templates/ (all 5)</span><span class="pb">30 Memory/ first notes</span><span class="pb">Ollama on Mac mini</span><span class="pb">Pi on Mac mini</span><span class="pb">symlink ~/.agents/skills/bifrost/</span></div>
+        <div class="phase-dog">Dogfood: vault-sync commits scaffold. Manual Pi dispatch proves the shell works.</div>
+      </div>
+    </div>
+    <div class="phase-row">
+      <div class="phase-head"><div class="phase-num">1</div><div class="phase-title">GitHub Read Skills</div><span class="tag t-not" style="margin-left:auto">not yet</span></div>
+      <div class="phase-body">
+        <div class="phase-desc">Agents can observe repositories. No side effects. Prerequisite for all validators.</div>
+        <div class="phase-builds"><span class="pb">github/read-file</span><span class="pb">github/read-diff</span><span class="pb">github/read-history</span><span class="pb">github/read-pr</span></div>
+        <div class="phase-dog">Dogfood: agents can read the commit that added them.</div>
+      </div>
+    </div>
+    <div class="phase-row">
+      <div class="phase-head"><div class="phase-num">2</div><div class="phase-title">First Skill + Loop-back</div><span class="tag t-not" style="margin-left:auto">not yet</span></div>
+      <div class="phase-body">
+        <div class="phase-desc">First working producer. Prove the quality loop closes. Most important phase.</div>
+        <div class="phase-builds"><span class="pb">docs/changelog SKILL.md</span><span class="pb">docs/drift SKILL.md</span><span class="pb">loop-back.sh (~50 lines)</span><span class="pb">manual Inbox workflow</span><span class="pb">promote gate</span></div>
+        <div class="phase-dog">Dogfood: docs/changelog writes its own changelog. docs/drift checks its own SKILL.md. Loop-back runs on both.</div>
+      </div>
+    </div>
+    <div class="phase-row">
+      <div class="phase-head"><div class="phase-num">3</div><div class="phase-title">Wiki Core Loop</div><span class="tag t-not" style="margin-left:auto">not yet</span></div>
+      <div class="phase-body">
+        <div class="phase-desc">Sanctum becomes a real compiling wiki. The system begins compounding.</div>
+        <div class="phase-builds"><span class="pb">wiki/ingest SKILL.md</span><span class="pb">wiki/query SKILL.md</span><span class="pb">wiki/lint SKILL.md</span><span class="pb">ingest system design docs as first sources</span><span class="pb">first lint pass</span></div>
+        <div class="phase-dog">Dogfood: wiki/ingest files the notes from its own creation session. wiki/query answers "what is the promote gate?" and files the answer as a wiki page.</div>
+      </div>
+    </div>
+    <div class="phase-row">
+      <div class="phase-head"><div class="phase-num">4</div><div class="phase-title">GitHub Write Skills</div><span class="tag t-not" style="margin-left:auto">not yet</span></div>
+      <div class="phase-body">
+        <div class="phase-desc">Agents materialise output as PRs. Review shifts from Inbox files to GitHub.</div>
+        <div class="phase-builds"><span class="pb">github/create-branch</span><span class="pb">github/commit-file</span><span class="pb">github/open-pr (loop-back must pass first)</span><span class="pb">docs/changelog opens PRs</span></div>
+        <div class="phase-dog">Dogfood: docs/changelog opens first real PR on the changelog for adding the write skills themselves.</div>
+      </div>
+    </div>
+    <div class="phase-row">
+      <div class="phase-head"><div class="phase-num">5</div><div class="phase-title">Slack + Tachyon Gateway</div><span class="tag t-not" style="margin-left:auto">not yet</span></div>
+      <div class="phase-body">
+        <div class="phase-desc">Dispatch from anywhere. The system becomes ambient.</div>
+        <div class="phase-builds"><span class="pb">Tachyon: Ollama 1-3B</span><span class="pb">Tachyon: Pi + test</span><span class="pb">Slack workspace + channels</span><span class="pb">webhook listener</span><span class="pb">Tachyon → mini routing</span></div>
+        <div class="phase-dog">Dogfood: dispatch docs/changelog from phone. Runs on Tachyon. PR link posts to Slack. First fully ambient loop.</div>
+      </div>
+    </div>
+    <div class="phase-row">
+      <div class="phase-head"><div class="phase-num">6</div><div class="phase-title">Self-Improvement Loop</div><span class="tag t-not" style="margin-left:auto">not yet</span></div>
+      <div class="phase-body">
+        <div class="phase-desc">Promote gate gets tooling. Memory updates become PRs. Backfill all prior phases.</div>
+        <div class="phase-builds"><span class="pb">memory/write skill</span><span class="pb">github/comment-pr + request-review + mark-ready</span><span class="pb">index/rebuild skill</span><span class="pb">backfill P0–P5 session summaries</span></div>
+        <div class="phase-dog">Dogfood: memory/write promotes its own build session. System stores a record of building itself.</div>
+      </div>
+    </div>
+    <div class="phase-row">
+      <div class="phase-head"><div class="phase-num">7</div><div class="phase-title">Full Workflow Chains</div><span class="tag t-not" style="margin-left:auto">not yet</span></div>
+      <div class="phase-body">
+        <div class="phase-desc">Full chains live. Model routing active. Real FODMAPP product work begins.</div>
+        <div class="phase-builds"><span class="pb">react-feature workflow</span><span class="pb">api-endpoint workflow</span><span class="pb">rag-pipeline workflow</span><span class="pb">type-safety workflow</span><span class="pb">OSS model routing rules</span></div>
+        <div class="phase-dog">Dogfood: react-feature builds the Slack channel component for the system's own dispatch interface.</div>
+      </div>
+    </div>
+    <div class="phase-row">
+      <div class="phase-head"><div class="phase-num">8</div><div class="phase-title">Webhook Triggers</div><span class="tag t-not" style="margin-left:auto">not yet</span></div>
+      <div class="phase-body">
+        <div class="phase-desc">Pull becomes push for proven roles. Qualification: ≥2 weeks predictable pull-mode.</div>
+        <div class="phase-builds"><span class="pb">github/on-ci-failure</span><span class="pb">github/on-pr-open</span><span class="pb">github/on-push-main</span><span class="pb">qualification audit</span></div>
+        <div class="phase-dog">Dogfood: CI failure on system's own repo triggers bug-find. The system debugs itself.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 19. EXISTING INFRA -->
+<div class="spec-section" id="existing">
+  <div class="spec-h2"><span class="spec-num">19</span>Existing Infrastructure</div>
+  <p>FODMAPP has significant infrastructure Phase 0 builds on. Everything system-level will be built fresh in the new repos.</p>
+
+  <div class="spec-h3">Carries forward as prior art</div>
+  <table class="spec-table">
+    <thead><tr><th>Artifact</th><th>Value</th></tr></thead>
+    <tbody>
+      <tr><td class="tid">AGENTS.md (FODMAPP)</td><td class="tdesc">Template for all future project AGENTS.md files. Phase 3 data contract shows how to encode domain constraints.</td></tr>
+      <tr><td class="tid">eslint.llm.config.mjs</td><td class="tdesc">The loop-back's primary signal source. Structured JSON violations. Already production-grade.</td></tr>
+      <tr><td class="tid">quality-gate.sh</td><td class="tdesc">Fast and --full modes. Will be generalised into Bifrost scripts/ as a thin project wrapper.</td></tr>
+      <tr><td class="tid">skills/turborepo-*/SKILL.md</td><td class="tdesc">Three real SKILL.md files. Prior art for format and conventions. Read before writing any new skills.</td></tr>
+      <tr><td class="tid">Worktree model</td><td class="tdesc">Maps directly onto foreground/background tier split.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="spec-h3">Phase 0 must create fresh</div>
+  <div class="phase-builds" style="margin-top:6px;">
+    <span class="pb">sanctum/ repo with full structure</span>
+    <span class="pb">bifrost/ repo with full structure + contracts</span>
+    <span class="pb">Sanctum/01 Indexes/log.md</span>
+    <span class="pb">symlink bifrost/skills/ → ~/.agents/skills/bifrost/</span>
+    <span class="pb">Ollama on Mac mini + Pi install + test</span>
+  </div>
+</div>
+
+</main>
+</div>
+</body>
+</html>
