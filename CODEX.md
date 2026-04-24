@@ -80,6 +80,10 @@ The human promotes.
 Sanctum and Bifrost are separate git repos. Never suggest merging them.
 Runestone is a separate directory, not a subdirectory of either repo.
 
+**Runestone uses pnpm.**
+For Runestone, use pnpm, not npm. The `packageManager` field in
+`runestone/package.json` is the source of truth for the exact pnpm version.
+
 **Verification is mandatory.**
 After every file write, verify the file exists at the correct path.
 After every copy, verify the content matches the source by line count
