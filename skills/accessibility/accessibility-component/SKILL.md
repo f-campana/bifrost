@@ -1,6 +1,6 @@
 ---
 name: accessibility/component
-version: 1.0.0
+version: 1.1.0
 type: validator
 domain: accessibility
 tier: action
@@ -31,196 +31,210 @@ no interactivity, this skill is not required.
 ## What it does
 
 1. Reads the component file and the component specification.
-2. Identifies the widget type (button, dialog, listbox, combobox, etc.)
+2. Identifies the widget type.
 3. Evaluates the component against the rules below.
 4. Writes a report to
    `sanctum/00 Inbox/accessibility-component-[name]-[date].md`.
 5. Reports: "Component: [name] · Widget type: [type] · Violations: [N]
-   · APG keyboard model: [pass/fail/not-applicable]."
+   · APG keyboard model: [pass/fail/not-applicable]
+   · Base UI primitive: [used/missing/not-applicable]
+   · Runtime tests required: [yes/no]."
+
+## Scope of this skill
+
+This skill validates structural correctness only: ARIA attributes,
+correct primitive usage, keyboard contract, data-* or CSS state exposure.
+
+**It cannot validate runtime behaviour.** Disabled state semantics —
+whether a click handler still fires when disabled, whether focus
+management works correctly on dialog open/close — require tests or
+code review, not static analysis. The run report must explicitly flag
+when runtime test coverage is required. Static validation is necessary
+but not sufficient.
 
 ## What it does NOT do
 
-- Does not rewrite the component. It reports violations for the
-  `react/component` skill to address.
-- Does not validate visual design — contrast ratios, colour blindness
-  considerations are out of scope here. Those belong in design/validator.
-- Does not replace a screen reader test. This skill catches structural
-  and semantic issues; runtime testing with actual assistive technology
-  is a separate step.
+- Does not rewrite the component.
+- Does not validate visual design — contrast, colour blindness.
+  Those belong in design/validator.
+- Does not replace a screen reader test.
+- Does not replace runtime tests for disabled state and focus management.
 
 ## Inputs
 
 **Required:**
 - `file_path` — path to the component TSX file.
-- `widget_type` — the ARIA widget category this component represents.
-  One of: `button`, `dialog`, `listbox`, `combobox`, `menu`, `tooltip`,
-  `checkbox`, `radio`, `switch`, `slider`, `tablist`, `disclosure`,
-  `form-field`, `display` (non-interactive).
+- `widget_type` — one of: `button`, `dialog`, `listbox`, `combobox`,
+  `menu`, `tooltip`, `checkbox`, `radio`, `switch`, `slider`, `tablist`,
+  `disclosure`, `form-field`, `display`.
 
 **Optional:**
-- `component_spec` — the original spec used to produce the component.
-  Helps identify intended behaviour versus implemented behaviour.
+- `component_spec` — the original spec.
 
 ## Output
 
 One markdown report at
 `sanctum/00 Inbox/accessibility-component-[name]-[date].md`.
 
-Each violation format:
+Violation format:
 ```
 Rule: [rule name]
 Widget type: [widget]
 Location: [file:line or description]
 Found: [what the component does]
-Required: [what it must do instead]
-APG reference: [relevant APG pattern if applicable]
+Required: [what it must do]
+APG reference: [if applicable]
 ```
+
+The report must end with a Runtime tests section stating which
+disabled-state and focus-management behaviours require tests.
 
 ## Rules
 
 ### Semantic HTML first
 
 - Use the native HTML element whose semantics match the component's role.
-  `<button>` for buttons. `<a>` for navigation links. `<input>` for
-  text entry. `<select>` for single-value selection when native is
-  sufficient. Native elements get keyboard interaction, focus, and ARIA
-  semantics for free.
 - Add ARIA only when native HTML cannot express the required semantic.
-  ARIA augments — it does not replace native semantics.
 - Never place interactive ARIA roles on non-interactive elements without
-  also implementing the full keyboard contract for that role.
+  implementing the full keyboard contract.
 
 ### ARIA rules
 
 - Every `aria-*` attribute must be a valid ARIA attribute name.
-  `aria-label`, `aria-labelledby`, `aria-describedby`, `aria-expanded`,
-  `aria-selected`, `aria-disabled`, `aria-hidden` are valid.
-  Misspellings (`aria-lable`, `aria-discription`) are silent failures.
-- ARIA names match the HTML specification exactly. Do not invent
-  `aria-*` attributes.
-- Interactive elements that lack a visible text label must have
-  `aria-label` or `aria-labelledby`. An icon-only button is a common
-  failure point.
-- `aria-hidden="true"` removes an element from the accessibility tree.
-  Do not apply it to elements that contain focusable children.
-- `role="presentation"` and `role="none"` strip semantics. Use them
-  only on structural wrappers where the element's native role is
-  misleading (e.g. a `<table>` used for layout, not data).
+  Misspellings are silent failures — flag every one.
+- Interactive elements without visible text labels must have
+  `aria-label` or `aria-labelledby`. Icon-only buttons are the
+  most common failure point.
+- `aria-hidden="true"` must not be applied to elements containing
+  focusable children.
 
 ### Keyboard interaction — by widget type
 
 **Button:**
 - `Enter` activates. `Space` activates.
-- Focus stays on the button after activation unless the action
-  removes it from the page.
-- If the button opens something (dialog, menu), focus moves inside
-  the opened content.
+- If the button opens something, focus moves inside the opened content.
+- Focus stays on the button after activation unless the action removes
+  it from the page.
 
 **Dialog (modal):**
-- On open: focus moves to the first focusable element inside the
-  dialog, or to the dialog container if no focusable element exists.
-- While open: `Tab` and `Shift+Tab` cycle through focusable elements
-  inside the dialog only. Focus must not leave the dialog.
-- `Escape` closes the dialog. On close: focus returns to the element
-  that triggered the dialog.
-- Content behind the dialog must be inert (`aria-modal="true"` on the
-  dialog, or `inert` attribute on the background).
+- On open: focus moves to the first focusable element inside, or the
+  dialog container.
+- While open: `Tab` and `Shift+Tab` cycle inside only. Focus must not
+  leave the dialog.
+- `Escape` closes. On close: focus returns to the trigger.
+- Content behind the dialog must be inert.
 
 **Listbox:**
-- Only one tab stop in the listbox. Arrow keys move between options.
-- `Home` moves to the first option. `End` moves to the last.
-- `Enter` or `Space` selects the focused option.
-- Type-ahead: typing a character moves focus to the next option
-  starting with that character.
-- Use either roving `tabindex` (set `tabindex="0"` on the focused
-  option, `tabindex="-1"` on others) or `aria-activedescendant`
-  (keep focus on the container, update `aria-activedescendant` to
-  the ID of the active option). Choose one pattern and apply it
-  consistently.
+- One tab stop. Arrow keys move between options.
+- `Home` → first. `End` → last. `Enter`/`Space` selects.
+- Type-ahead: character key moves to next matching option.
+- Roving tabindex or aria-activedescendant — choose one consistently.
 
 **Combobox:**
-- The input has `role="combobox"`, `aria-expanded`, `aria-haspopup`,
-  and `aria-controls` pointing to the listbox.
-- Arrow keys open the listbox and navigate options.
-- `Enter` selects. `Escape` collapses.
+- Input: `role="combobox"`, `aria-expanded`, `aria-haspopup`,
+  `aria-controls` pointing to listbox.
+- Arrow keys open and navigate. `Enter` selects. `Escape` collapses.
 
 **Tooltip:**
-- Triggered by hover and focus. Never by click alone.
-- `role="tooltip"` on the tooltip element.
-- `aria-describedby` on the trigger pointing to the tooltip element.
+- Triggered by hover and focus. Never click alone.
+- `role="tooltip"`. `aria-describedby` on the trigger.
 - `Escape` dismisses.
 
 **Form field:**
-- Every input has an associated `<label>` via `for`/`id`, `aria-label`,
-  or `aria-labelledby`. Placeholder text is not a label.
-- Error messages are associated via `aria-describedby`.
-- Invalid fields have `aria-invalid="true"`.
-- Required fields have `required` on the native element or
+- Every input has an associated label — `for`/`id`, `aria-label`,
+  or `aria-labelledby`. Placeholder is not a label.
+- Error messages via `aria-describedby`.
+- Invalid: `aria-invalid="true"`. Required: `required` or
   `aria-required="true"`.
 
 ### Focus management
 
 - Interactive elements must be reachable by keyboard.
-- Custom interactive components not built on native HTML elements must
-  have `tabindex="0"` to be keyboard-focusable.
-- Disabled elements should use `aria-disabled="true"` rather than
-  the `disabled` HTML attribute when the element should remain in the
-  tab order (e.g. with a tooltip explaining why it is disabled).
-  Use `disabled` when removing it from the tab order is correct.
-- Focus indicators must be visible. Do not suppress the browser's
-  default focus ring without replacing it with an equally visible
-  custom indicator.
+- Custom components not built on native HTML must have `tabindex="0"`.
+- Focus indicators must be visible. Press components use:
+  `focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
+   focus-visible:outline-[var(--pr-focus-ring)]`
+  Do not suppress this.
 
-### State exposure for styling
+### Disabled state
 
-- Interaction state must be exposed through `data-*` attributes so
-  Press CSS can target behavior without coupling logic and visuals:
-  - `data-hovered` — pointer hover state
-  - `data-pressed` — active press state
-  - `data-focused` — keyboard or pointer focus state
-  - `data-focus-visible` — keyboard focus only (not pointer)
-  - `data-disabled` — disabled state
-  - `data-selected` — selection state (listbox, tabs, etc.)
-  - `data-expanded` — open/closed state (disclosure, combobox, etc.)
-- These attributes are set by React Aria automatically when using
-  React Aria primitives. Do not reimplement them manually.
+The correct disabled pattern depends on tab-order intent:
 
-### React Aria integration
+**Remove from tab order (default):** spread Base UI primitive props with
+`disabled`. Base UI applies `aria-disabled` and removes from tab order.
 
-- Interactive components must wrap a React Aria primitive rather than
-  reimplementing keyboard and focus behavior.
-- Verify that the React Aria primitive is correctly imported and used.
-  `useButton` for buttons. `useDialog` for dialogs. `useListBox` for
-  listboxes. etc.
-- The React Aria primitive's return value (`buttonProps`, `dialogProps`,
-  etc.) must be spread onto the correct DOM element.
-- Do not override event handlers that React Aria provides unless the
-  override is intentional and documented.
+**Keep in tab order:** spread Base UI primitive props with
+`focusableWhenDisabled={true}`. Use when a tooltip explains why disabled.
+
+**Static validation checks:**
+- Is the Base UI primitive used? If yes, `disabled` handling is correct
+  by construction.
+- Are there custom DOM `click` handlers on the component? If yes, flag
+  for runtime test — static analysis cannot verify they respect disabled.
+- Is `disabled` being manually stripped from props? Flag as
+  high-severity — this was the P1 pattern in PressButton v1.
+
+**Runtime test requirement (always flag for interactive components):**
+Tests must cover: keyboard activation blocked when disabled; click
+handler not invoked when disabled; `focusableWhenDisabled` keeps element
+in tab order; `focusableWhenDisabled=false` removes it.
+
+### Interaction state styling
+
+**Simple components (Button, Badge, Tag, Input):**
+Interaction states should use CSS pseudo-classes: `hover:`, `focus-visible:`,
+`disabled:`, `active:`, `aria-invalid:`. Flag the following as violations
+for simple components:
+- `useHover`, `useFocusRing`, or `useFocusWithin` hooks
+- Manual `data-hovered`, `data-pressed`, `data-focused` spreading
+These add complexity that CSS handles natively.
+
+**Complex composites (Dialog, Select, Listbox, Menu):**
+Base UI exposes `data-*` attributes automatically where CSS pseudo-classes
+are insufficient. Verify these are used rather than custom implementations.
+
+### Base UI primitive integration
+
+- Interactive components must extend a Base UI primitive from
+  `@base-ui-components/react`.
+- Verify the correct primitive is imported and that the component
+  extends `[Primitive]Primitive.Props`.
+- The primitive's props must be spread via `...props` so consumers
+  receive the full API including `focusableWhenDisabled`.
+- Flag as high-severity: interactive component that does not use a
+  Base UI primitive and reimplements keyboard or focus behavior.
+- Flag as high-severity: use of react-aria hooks (useButton, useHover,
+  useFocusRing) — these are not the default primitive layer per ADR D2.
 
 ## Failure modes
 
-**Widget type unknown:** Stop. Report that the widget type is required
-to evaluate the keyboard model. Ask the caller to specify it.
+**Widget type unknown:** Stop. Ask the caller to specify it.
 
-**Native HTML element available but not used:** Flag the gap. Report
-which native element should be used and why the ARIA-only approach
-is insufficient.
+**Native HTML available but not used:** Flag. Report which native element
+to use.
 
-**React Aria primitive not used for interactive component:** Flag as a
-high-severity violation. Reimplementing keyboard and focus behavior
-from scratch is a reliability and maintenance risk.
+**Base UI primitive missing for interactive component:** Flag high-severity.
+Report which Base UI primitive covers this behavior.
 
-**Scope creep:** Evaluate one component at a time. If the file contains
-multiple components, evaluate only the one named in the input.
+**Manual disabled attribute manipulation:** Flag high-severity. Correct
+pattern is `focusableWhenDisabled` on the Base UI primitive.
+
+**react-aria hooks found:** Flag as ADR D2 violation. Report the Base
+UI equivalent.
+
+**Custom click handler present with disabled state:** Flag for runtime
+test — cannot be verified statically.
+
+**Scope creep:** Evaluate one component at a time.
 
 ---
 
 ## Sources
 
-Rules derived from:
+- `sanctum/10 Knowledge/Concepts/press-component-architecture-adr.md`
 - `sanctum/40 Sources/Accessibility/wai-aria-authoring-practices-guide.md`
 - `sanctum/40 Sources/Accessibility/adobe-react-aria-styling.md`
 - W3C WAI-ARIA Authoring Practices Guide: Button, Dialog, Listbox,
   Combobox, Tooltip patterns
 - React team docs: Invalid ARIA Prop Warning, Common DOM components
-- Adobe React Aria: state exposure via data-* attributes
+- Base UI source: `@base-ui-components/react` Button component

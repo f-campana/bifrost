@@ -1,6 +1,6 @@
 ---
 name: react/component
-version: 1.0.0
+version: 1.1.0
 type: producer
 domain: react
 tier: action
@@ -18,46 +18,43 @@ model_preference: claude-sonnet
 ## When to use
 
 Use when producing a production React component for the Press component
-library. This skill governs the component architecture, API design, state
-model, and composition patterns. It is the React-specific counterpart to
-`frontend/island` — where `frontend/island` handles the Astro integration
-and Press motion rules, this skill handles React correctness, component
-API design, and the behavioral primitive model.
+library. This skill governs component architecture, API design, state
+model, and composition patterns. Always pair with `typescript/component`
+for type validation and `accessibility/component` for behavioral
+correctness.
 
-Always pair this skill with `typescript/component` for type validation
-and `accessibility/component` for behavioral correctness.
+Before using this skill, read the component architecture ADR at:
+`sanctum/10 Knowledge/Concepts/press-component-architecture-adr.md`
 
 ## What it does
 
 1. Reads the Design Contract and component specification.
-2. Reads the relevant React source material in `sanctum/40 Sources/React/`.
-3. Produces one React functional component as a `.tsx` file following the
-   rules below.
+2. Reads the component architecture ADR.
+3. Produces one React functional component as a `.tsx` file following
+   the rules and template below.
 4. Writes a run report to
    `sanctum/00 Inbox/react-component-[name]-[date].md`.
-5. Reports: "Component: [name] · Props: [interface] · State: [model]
-   · Composition pattern: [pattern used] · Lines: [N]."
+5. Reports: "Component: [name] · Primitive: [Base UI primitive used]
+   · Props: [interface] · Lines: [N]."
 
 ## What it does NOT do
 
 - Does not produce class components — functional components only.
 - Does not produce Astro files — use `frontend/component` or
   `frontend/island` for Astro integration.
-- Does not implement accessibility behavior from scratch — behavioral
-  primitives (keyboard, focus, ARIA) come from React Aria. This skill
-  owns the visual layer on top.
-- Does not manage global or cross-component state — each component is
-  self-contained. Application state is the consuming app's concern.
-- Does not choose a state management library — `useState` and `useReducer`
-  are the tools at this layer.
+- Does not implement accessibility behavior from scratch — Base UI
+  handles keyboard, focus, and ARIA. This skill owns the visual layer.
+- Does not use asChild or Radix Slot — see ADR Decision 1.
+- Does not use react-aria hooks (useButton, useHover, useFocusRing,
+  mergeProps) by default — see ADR Decision 2.
+- Does not manage global or cross-component state.
 
 ## Inputs
 
 **Required:**
 - `design_contract` — path to the Design Contract.
-- `component_spec` — description of the component: what it is, what
-  props it receives, what state it has, what Press rules apply, which
-  React Aria primitive it wraps (if interactive).
+- `component_spec` — what the component is, what props it receives,
+  which Base UI primitive it wraps (if interactive).
 
 **Optional:**
 - `output_path` — override the default output directory.
@@ -66,147 +63,237 @@ and `accessibility/component` for behavioral correctness.
 
 One `.tsx` file at `runestone/src/components/[ComponentName].tsx`.
 
+## Component template
+
+Every Press component follows this structure. Do not deviate:
+
+```typescript
+// Hydration boundary note:
+// In Astro (current system): add client:* on the .astro page, not here.
+// In RSC frameworks (Next.js App Router): add 'use client' at this line.
+
+import { [Primitive] as [Primitive]Primitive } from '@base-ui-components/react/[primitive]'
+import { cva, type VariantProps } from 'class-variance-authority'
+import { cn } from '@/lib/utils'
+
+const press[Component]Variants = cva(
+  [
+    // Press inviolable rules — never remove these three
+    'border-2 border-solid rounded-none shadow-none',
+    // Base layout
+    '...',
+    // Focus — keyboard only via CSS, Press focus-ring token
+    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2',
+    'focus-visible:outline-[var(--pr-focus-ring)]',
+  ],
+  {
+    variants: {
+      variant: {
+        primary: [...],
+        ghost: [...],
+      },
+    },
+    defaultVariants: { variant: 'primary' },
+  }
+)
+
+export interface Press[Component]Props
+  extends [Primitive]Primitive.Props,
+    VariantProps<typeof press[Component]Variants> {}
+
+export function Press[Component]({
+  className,
+  variant,
+  ...props
+}: Press[Component]Props) {
+  return (
+    <[Primitive]Primitive
+      className={cn(press[Component]Variants({ variant, className }))}
+      {...props}
+    />
+  )
+}
+```
+
 ## Rules
+
+### React 19 idioms
+
+- No `forwardRef` — ref is a regular prop in React 19.
+- Do not add `useMemo` or `useCallback` manually. The React Compiler
+  handles memoization. Manual memoization is technical debt.
+- `VariantProps<typeof variantFn>` drives prop types — do not hand-mirror
+  variant unions in the interface.
+
+**Hydration boundary:** In Astro, hydration is controlled at the page
+level via `client:*` on the `.astro` file — not via `'use client'`
+inside component files. In RSC frameworks (Next.js App Router), add
+`'use client'` at the top of interactive component files. The Press
+component library is agnostic about the hydration boundary; the
+consuming framework determines where it sits.
 
 ### Component model
 
 - Functional components only. No class components.
 - Define the component at the module level. Never define a component
-  inside another component — this creates a new component identity on
-  every render, breaking reconciliation and state.
-- Export the component as a named export and the props interface as a
-  named export. Both must be exported — consumers need to type wrappers.
-- Component names use PascalCase. Prop interface names use
-  `[ComponentName]Props`.
+  inside another component.
+- Export both the component (named export) and the props interface
+  (named export). Consumers need to type wrappers.
+- Component names use PascalCase. Prop interfaces use `[Name]Props`.
 
 ### Props
 
 - Every prop is explicitly typed. No implicit `any`.
 - Use `React.ReactNode` for children unless the component requires
-  a single element (document why if so).
+  a single element — document why if so.
 - Prefer `variant: 'primary' | 'ghost'` over `isPrimary: boolean`.
-  Mutually exclusive states are discriminated unions, not boolean flags.
-- Spread native element props where the component wraps a native element:
-  `interface ButtonProps extends React.ComponentProps<'button'>`.
-  This allows consumers to pass any valid HTML attribute.
-- Support `asChild` for polymorphic usage using Radix's `Slot` when
-  the component needs to render as a different element.
-- Export the props interface. Hidden interfaces are a component library
-  anti-pattern.
+  Mutually exclusive states are discriminated unions, not booleans.
+- Extend the Base UI primitive's props type:
+  `interface PressButtonProps extends ButtonPrimitive.Props, VariantProps<...>`
+  This gives consumers the full primitive API including
+  `focusableWhenDisabled`, `disabled`, `onPress`, etc.
+- Do not add asChild. See ADR D1.
+- Export the props interface.
 
-### State
+### Polymorphism
 
-- Use `useState` with an explicit type when the initial value does not
-  infer the full state shape.
-- Model multi-step interaction states as discriminated unions:
-  `'idle' | 'pressed' | 'loading'`, not separate booleans.
-- State that is derived from props is not state — compute it during render.
-- Lift state only when two components genuinely need to share it. Do not
-  lift preemptively.
-- `useReducer` over multiple `useState` calls when state transitions
-  follow a defined set of actions.
+Polymorphism is handled by separate components, not asChild.
+`PressButton` renders a `<button>`. `PressButtonLink` renders an `<a>`.
+Both share the same CVA variant definitions. Both extend their
+respective Base UI primitive's props.
 
-### Effects and side effects
+When a spec asks for a "button that renders as a link," produce two
+components sharing variants. Never use Radix Slot or asChild.
 
-- Effects are for synchronisation with external systems — DOM APIs,
-  timers, subscriptions. They are not for deriving state from props.
-- Every effect must have a complete dependency array. Missing dependencies
-  are bugs.
-- Clean up subscriptions, timers, and event listeners in the effect's
-  return function.
-- Do not fetch data in effects inside components. Data fetching belongs
-  at the page or loader level.
+### Base UI primitives
 
-### Composition patterns
+Interactive components wrap a Base UI primitive from
+`@base-ui-components/react`:
+- Button → `/button`
+- Dialog → `/dialog`
+- Popover → `/popover`
+- Select → `/select`
+- Checkbox → `/checkbox`
+- Switch → `/switch`
+- Tooltip → `/tooltip`
+- Menu → `/menu`
 
-- Prefer composition over configuration. A component that accepts
-  children and renders them is more flexible than one with twenty props
-  describing what to render inside it.
-- Use compound components for UI that has a rigid structural relationship:
-  `<Select>` + `<Select.Trigger>` + `<Select.Content>` rather than
-  `<Select trigger={...} content={...} />`.
-- Use render props or `children` as a function only when the parent
-  needs to share internal state with children that it does not own.
-- The `asChild` pattern (Radix `Slot`) is the correct tool for
-  polymorphism. Avoid generic `as` props unless `asChild` cannot
-  express the requirement.
+Base UI handles: keyboard interaction, focus management, ARIA
+roles/states/properties, press normalization, `focusableWhenDisabled`.
 
-### Behavioral primitives
+The default primitive layer is Base UI. If no Base UI primitive exists
+for the use case, report the gap rather than switching to another
+library — this requires an explicit ADR update.
 
-- Interactive components (buttons, dialogs, listboxes, tooltips,
-  select menus, comboboxes) must be built on React Aria primitives,
-  not from scratch.
-- React Aria handles: keyboard interaction, focus management, ARIA
-  roles/states/properties, touch and pointer event normalization,
-  screen reader announcements.
-- The Press component owns: visual presentation, token application,
-  Press inviolable rules, CVA variants.
-- The boundary between React Aria and Press is the `data-*` attribute
-  surface: React Aria exposes `data-hovered`, `data-pressed`,
-  `data-focused`, `data-disabled`. Press CSS targets these attributes
-  for state-driven styling. No JavaScript needed to style hover or
-  focus states.
+### Interaction state styling
 
-### Performance
+Interaction states are styled via CSS pseudo-classes and ARIA attribute
+selectors — not JavaScript-driven data-* attributes:
 
-- Do not wrap every component in `React.memo`. Memoize only when a
-  profiler identifies a specific re-render problem.
-- If a callback prop is passed to a memoized child, stabilize it with
-  `useCallback`. Otherwise `useCallback` adds overhead without benefit.
-- Expensive computations in render belong in `useMemo`. Cheap
-  computations do not.
-- Structural fixes before memoization: if a component re-renders because
-  its parent re-renders, consider whether composition (lifting the
-  stable part out of the re-rendering parent) solves it without memo.
+```
+hover:bg-[var(--pr-orange)]          ← pointer hover
+focus-visible:outline-[var(...)]     ← keyboard focus only
+disabled:opacity-50                  ← disabled via native attribute
+aria-invalid:border-[var(...)]       ← validation state
+aria-expanded:bg-[var(...)]          ← open/closed composites
+active:translate-y-px                ← press feedback
+```
+
+Do not add `useHover`, `useFocusRing`, or manual `data-hovered`
+spreading for simple components. CSS handles it.
+
+Base UI exposes `data-*` attributes automatically for complex composites
+(Dialog, Select) where CSS pseudo-classes are insufficient. Simple
+primitives (Button, Badge, Tag) do not need JS state machines.
+
+### Disabled state
+
+Use Base UI's `focusableWhenDisabled` prop when the component must
+remain in the tab order while disabled. Do not manually strip the
+native `disabled` attribute. Do not manually add `aria-disabled`.
+Base UI handles all of this correctly.
+
+Default: `focusableWhenDisabled` is false. Set it explicitly when a
+tooltip explains why the element is disabled.
+
+If the component adds custom DOM `click` handlers (beyond Base UI's
+`onPress`), those handlers must check and respect the `disabled` state.
+Base UI suppresses press events — it does not suppress native DOM click.
+
+### CVA and class composition
+
+- CVA base string must always include:
+  `'border-2 border-solid rounded-none shadow-none'`
+  These are Press inviolable rules. Present in every component's base.
+- Use `cn()` (clsx + tailwind-merge) to merge CVA output with
+  consumer className.
+- Focus visible classes must be in the base string of every interactive
+  component.
+
+### State and hooks
+
+- `useState` only for UI state: open/closed, loading, selected index.
+- Model multi-step states as discriminated unions, not booleans.
+- `useReducer` when state transitions follow a defined action set.
+- Do not add hooks for interaction state (hover, press, focus) —
+  CSS handles those.
+
+### Composition
+
+- Prefer composition over configuration.
+- Compound components for rigid structural relationships.
+- Do not use render props or children-as-function unless the parent
+  genuinely needs to share internal state with children it does not own.
 
 ### Purity
 
-- Components must be pure with respect to rendering: given the same
-  props and state, they must return the same JSX.
-- Do not mutate props, state, context, or external variables during render.
-- Side effects belong in event handlers or effects, not in the render body.
+- Pure render: same props + state → same JSX.
+- Do not mutate props, state, context, or external variables in render.
+- Side effects in handlers or effects, not in render.
 
 ## Failure modes
 
-**Component requires data fetching:** Stop. Report that data fetching
-belongs at the page or loader level. Describe what data the component
-needs and where the parent should source it.
+**Spec asks for asChild:** Stop. Propose the two-component approach
+from ADR D1 (PressButton + PressButtonLink).
 
-**Spec implies a class component:** Stop. All components are functional.
-Describe the equivalent functional pattern.
+**Spec says to use react-aria hooks:** Stop. The default primitive
+layer is Base UI. Report which Base UI primitive covers the use case.
+If none exists, report the gap — do not switch libraries unilaterally.
 
-**Spec requires reinventing an accessible primitive:** Stop. Report which
-React Aria primitive covers this behavior and dispatch with the React Aria
-primitive as the base instead.
+**No Base UI primitive for this use case:** Stop. Report the gap.
+This requires an ADR update before proceeding.
 
-**Scope creep:** One component per dispatch. If the spec implies multiple
-related components, stop and split the spec.
+**Spec requires data fetching:** Stop. Data belongs at the page level.
+
+**Scope creep:** One component per dispatch.
 
 ---
 
 ## Current implementation
 
-**React version:** React 18
-**TypeScript:** strict mode required — see `typescript/component` skill
-**Styling:** Tailwind v4 utility classes via Press adapter, CVA for variants
-**Accessible primitives:** React Aria (`@react-aria/*` or `react-aria`)
+**React version:** React 19
+**TypeScript:** strict — see `typescript/component` skill
+**Behavioral primitives:** Base UI (`@base-ui-components/react`)
+**Variant system:** CVA (`class-variance-authority`)
+**Class merging:** `cn()` = clsx + tailwind-merge
+**Styling:** Tailwind v4 + Press adapter + CSS pseudo-classes
+**Hydration (Astro):** `client:*` on the `.astro` page
 **Package manager:** pnpm
 
-**If the stack changes:** update this section only. The contract above
-remains stable.
+**Architecture reference:**
+`sanctum/10 Knowledge/Concepts/press-component-architecture-adr.md`
 
 ---
 
 ## Sources
 
-Rules derived from:
+- `sanctum/10 Knowledge/Concepts/press-component-architecture-adr.md`
 - `sanctum/40 Sources/React/Concepts/React - Component Model, Props, and State.md`
 - `sanctum/40 Sources/React/Concepts/React - Composition, Lifting State, and Controlled vs Uncontrolled.md`
 - `sanctum/40 Sources/React/Concepts/React - Hooks, Effects, and Closures.md`
 - `sanctum/40 Sources/React/Concepts/React - Memoization and Performance Tradeoffs.md`
 - `sanctum/40 Sources/React/Lessons/React - Lesson 04 - Advanced Patterns at Scale.md`
 - `sanctum/40 Sources/React/Lessons/React - Lesson 05 - Performance Beyond Memo.md`
-- Vercel composition patterns: compound components, injectable state,
-  boolean prop soup anti-pattern
-- React team docs: Thinking in React, Components and Hooks must be pure,
-  Using TypeScript
+- Base UI source: `@base-ui-components/react` Button component
+- shadcn/ui Base UI button source (2025)
+- Adobe React Spectrum Button source (2024)
