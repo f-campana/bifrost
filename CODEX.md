@@ -84,6 +84,17 @@ Runestone is a separate directory, not a subdirectory of either repo.
 For Runestone, use pnpm, not npm. The `packageManager` field in
 `runestone/package.json` is the source of truth for the exact pnpm version.
 
+**Component primitives: Base UI.**
+The Press component library uses @base-ui-components/react
+as the behavioral primitive layer for all interactive
+components. Radix UI primitives and react-aria hooks are
+not the default. asChild is not used. The full architecture
+is documented in:
+sanctum/10 Knowledge/Concepts/
+press-component-architecture-adr.md
+Read that document before producing or reviewing any
+React component.
+
 **Verification is mandatory.**
 After every file write, verify the file exists at the correct path.
 After every copy, verify the content matches the source by line count
