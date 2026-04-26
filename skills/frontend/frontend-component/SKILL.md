@@ -125,6 +125,14 @@ section, stop. This skill produces one component per dispatch.
 **Props:** Typed `interface Props` in the component frontmatter
 **No hydration directive** — this component has no client-side JavaScript
 
+**CSS layer ordering requirement:**
+press.css must wrap its universal reset in @layer base.
+If this is not done, Tailwind utility classes for padding
+and margin will be silently overridden by the reset.
+Verify this is in place before producing any component
+that uses padding or margin utilities. The anti-pattern
+is documented in press.md section 10.
+
 Component structure:
 ```astro
 ---
