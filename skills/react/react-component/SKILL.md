@@ -72,7 +72,7 @@ Every Press component follows this structure. Do not deviate:
 // In Astro (current system): add client:* on the .astro page, not here.
 // In RSC frameworks (Next.js App Router): add 'use client' at this line.
 
-import { [Primitive] as [Primitive]Primitive } from '@base-ui-components/react/[primitive]'
+import { [Primitive] as [Primitive]Primitive } from '@base-ui/react/[primitive]'
 import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
 
@@ -168,7 +168,7 @@ components sharing variants. Never use Radix Slot or asChild.
 ### Base UI primitives
 
 Interactive components wrap a Base UI primitive from
-`@base-ui-components/react`:
+`@base-ui/react`:
 - Button → `/button`
 - Dialog → `/dialog`
 - Popover → `/popover`
@@ -273,7 +273,7 @@ This requires an ADR update before proceeding.
 
 **React version:** React 19
 **TypeScript:** strict — see `typescript/component` skill
-**Behavioral primitives:** Base UI (`@base-ui-components/react`)
+**Behavioral primitives:** Base UI (`@base-ui/react`)
 **Variant system:** CVA (`class-variance-authority`)
 **Class merging:** `cn()` = clsx + tailwind-merge
 **Styling:** Tailwind v4 + Press adapter + CSS pseudo-classes
@@ -294,6 +294,6 @@ This requires an ADR update before proceeding.
 - `sanctum/40 Sources/React/Concepts/React - Memoization and Performance Tradeoffs.md`
 - `sanctum/40 Sources/React/Lessons/React - Lesson 04 - Advanced Patterns at Scale.md`
 - `sanctum/40 Sources/React/Lessons/React - Lesson 05 - Performance Beyond Memo.md`
-- Base UI source: `@base-ui-components/react` Button component
+- Base UI source: `@base-ui/react` Button component
 - shadcn/ui Base UI button source (2025)
 - Adobe React Spectrum Button source (2024)

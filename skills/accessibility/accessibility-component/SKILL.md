@@ -196,7 +196,7 @@ are insufficient. Verify these are used rather than custom implementations.
 ### Base UI primitive integration
 
 - Interactive components must extend a Base UI primitive from
-  `@base-ui-components/react`.
+  `@base-ui/react`.
 - Verify the correct primitive is imported and that the component
   extends `[Primitive]Primitive.Props`.
 - The primitive's props must be spread via `...props` so consumers
@@ -237,4 +237,4 @@ test — cannot be verified statically.
 - W3C WAI-ARIA Authoring Practices Guide: Button, Dialog, Listbox,
   Combobox, Tooltip patterns
 - React team docs: Invalid ARIA Prop Warning, Common DOM components
-- Base UI source: `@base-ui-components/react` Button component
+- Base UI source: `@base-ui/react` Button component
