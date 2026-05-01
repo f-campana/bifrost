@@ -95,6 +95,42 @@ press-component-architecture-adr.md
 Read that document before producing or reviewing any
 React component.
 
+**Ralph loop goals: three required elements.**
+A /goal spec must include all three of the following
+or the loop will fill gaps with its own judgment:
+
+1. Success criteria — binary, machine-verifiable
+   conditions that prove the goal is complete.
+   Example: "pnpm exec tsc --noEmit exits zero"
+   not "the component looks correct".
+
+2. BLOCKED conditions — explicit situations where
+   the loop must stop and report rather than solve.
+   Always include:
+   - Achieving any gate requires patching node_modules
+     or any installed dependency
+   - Achieving any gate requires modifying files not
+     created or explicitly listed in this goal
+   - Pre-existing errors in unrelated files do not
+     block this goal — exclude them explicitly if
+     needed (e.g. exclude scripts/ from tsconfig)
+
+3. Context — what the loop should assume rather than
+   discover. Include: correct package names and
+   versions, any known gaps in the ecosystem
+   (e.g. "Base UI has no Anchor primitive at v1.4.1,
+   use native &lt;a&gt;"), and which files require
+   modification.
+
+Evidence: two PressButtonLink ralph loop runs.
+Run 1 — wrong package name + no BLOCKED conditions
+→ loop patched node_modules to satisfy gates.
+Run 2 — correct context + explicit BLOCKED conditions
+→ 1 loop, 257 seconds, clean output, no side effects.
+Full records in:
+sanctum/40 Sources/Design/sessions/
+pressbuttonlink-v2-loop-2026-05-01.md
+
 **Verification is mandatory.**
 After every file write, verify the file exists at the correct path.
 After every copy, verify the content matches the source by line count
