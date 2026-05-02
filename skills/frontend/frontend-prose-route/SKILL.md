@@ -199,7 +199,7 @@ remains stable.
 
 ## Sources
 
-- `sanctum/00 Inbox/harvest-frontend-phase-1-2026-05-02.md`
+- `sanctum/10 Knowledge/Concepts/harvest-frontend-phase-1.md`
   (Section 4, proposal 1; Section 3, case 1)
 - `sanctum/10 Knowledge/Design/runes/press.md`
   (section 04 inviolable rules; section 06 typography; section 10 anti-patterns)
