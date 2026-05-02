@@ -145,6 +145,64 @@ Every new skill uses `sanctum/99 Templates/SKILL.md` as its template.
 Every new Rune uses `sanctum/99 Templates/rune.md`.
 Every new session summary uses `sanctum/99 Templates/session-summary.md`.
 
+**Route restructuring must enumerate removals in the
+same commit as the move.**
+When a dispatch moves content from one route to
+another, list:
+- every component or section that moves
+- every component or section that must be removed
+  from the origin route
+- every CSS block, helper, or style selector that
+  becomes dead after the move
+
+All removals — including dead style selectors — ship
+in the same commit as the move. Do not report a route
+split complete until the destination route renders the
+moved content, the origin route no longer renders it,
+and no dead styles for it remain in the tree.
+
+**Agent self-edits may not silently remove previously
+instructed code.**
+If you remove any code that was added earlier in the
+same dispatch chain, call it out explicitly before
+editing and again in the final report.
+Required report line:
+"Self-edit removal: [file] — removed [what] —
+reason [why]."
+If the removal changes behaviour on any viewport or
+input mode, name that behaviour explicitly.
+
+**Component moves require copy review in the same
+dispatch.**
+When a component moves between routes, review:
+- intro copy
+- captions
+- call-to-action labels
+- instructional notes
+
+Do not preserve route-specific framing by default.
+Re-check whether the moved copy still matches the new
+page purpose, audience, and interaction model.
+
+**Every dispatch that produces commits must write an
+Inbox run report.**
+The run report is the agent's account of what
+happened — distinct from commit messages, which
+describe intent, and from the dispatch brief, which
+describes intent before the fact.
+
+The report lives at sanctum/00 Inbox/[skill-or-task]-
+[target]-[date].md and contains:
+- dispatch summary (what was asked)
+- actions taken (file by file)
+- commands run with verbatim output for any
+  verification step the dispatch named
+- deviations from the brief, if any
+- commit SHAs produced
+
+Commit messages may be cited as evidence of what
+changed. They may not stand in for the run report.
+
 ---
 
 ## Context boot for every session

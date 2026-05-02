@@ -63,6 +63,15 @@ instead.
 - Does not produce a component that works only for one specific Rune —
   components must accept typed props and work for any conforming data.
 
+**Single source rule:**
+If a route needs a component that already exists,
+reuse the component file.
+Do not inline a second copy of the component markup
+into the route file to avoid modifying the original.
+If the route needs different copy or notes, add
+typed props or create a thin wrapper component and
+report the divergence explicitly.
+
 ## Inputs
 
 **Required:**
